@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>로그인 - TutorBridge</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body x-data="loginApp()" x-cloak>
+  
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo-container">
+        <div class="logo-icon">🎓</div>
+        <h1 class="logo-text">Tutor<span>Bridge</span></h1>
+        <p class="tagline">AI 튜터 기반 스마트 학습 & 질의응답 시스템</p>
+      </div>
+      
+      <!-- Login Form -->
+      <form x-show="mode === 'login'" @submit.prevent="handleLogin()">
+        <div class="role-tabs">
+          <button type="button" class="role-tab" :class="{ 'active': role === 'student' }" @click="role = 'student'">
+            🎓 학생
+          </button>
+          <button type="button" class="role-tab" :class="{ 'active': role === 'instructor' }" @click="role = 'instructor'">
+            📋 강사
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">이메일</label>
+          <input type="email" class="form-input" x-model="email" placeholder="your@email.com" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">비밀번호</label>
+          <input type="password" class="form-input" x-model="password" placeholder="••••••••" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" :disabled="isLoading">
+          <template x-if="isLoading"><div class="loading-spinner"></div></template>
+          <template x-if="!isLoading">
+            <span x-text="role === 'instructor' ? '강사로 로그인' : '학생으로 로그인'"></span>
+          </template>
+        </button>
+      </form>
+      
+      <!-- Register Form -->
+      <form x-show="mode === 'register'" @submit.prevent="handleRegister()">
+        <div class="role-tabs">
+          <button type="button" class="role-tab" :class="{ 'active': role === 'student' }" @click="role = 'student'">
+            🎓 학생으로 가입
+          </button>
+          <button type="button" class="role-tab" :class="{ 'active': role === 'instructor' }" @click="role = 'instructor'">
+            📋 강사로 가입
+          </button>
+        </div>
+        
+        <!-- 이름 -->
+        <div class="form-group">
+          <label class="form-label">이름 <span style="color:#ef4444">*</span></label>
+          <input type="text" class="form-input" x-model="displayName" placeholder="홍길동" required>
+        </div>
+        
+        <!-- 이메일 -->
+        <div class="form-group">
+          <label class="form-label">이메일 <span style="color:#ef4444">*</span></label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="email" class="form-input" x-model="email" placeholder="your@email.com" required style="flex: 1;" :disabled="emailVerified || emailVerificationSent">
+            <button type="button" class="btn" @click="sendVerificationEmail()" :disabled="!email || emailVerificationSent || emailVerified" style="width: auto; padding: 0.75rem 1rem; font-size: 0.875rem; white-space: nowrap;" :class="emailVerificationSent && !emailVerified ? 'btn-secondary' : 'btn-primary'">
+              <span x-text="emailVerified ? '✓ 인증완료' : (emailVerificationSent ? '발송완료' : '인증 메일 발송')"></span>
+            </button>
+          </div>
+          
+          <!-- 인증 상태 확인 버튼 -->
+          <div x-show="emailVerificationSent && !emailVerified" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" class="btn" @click="checkEmailVerification()" :disabled="isCheckingVerification" style="width: auto; padding: 0.5rem 1rem; font-size: 0.875rem; background: #10b981; color: white;">
+              <span x-text="isCheckingVerification ? '확인중...' : '✓ 인증 상태 확인'"></span>
+            </button>
+            <span style="font-size: 0.75rem; color: #6b7280;">이메일에서 인증 링크를 클릭한 후 이 버튼을 눌러주세요</span>
+          </div>
+          
+          <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;" x-show="emailVerificationSent && !emailVerified && !isCheckingVerification">이메일을 확인하여 인증 링크를 클릭해주세요. 인증 후 "인증 상태 확인" 버튼을 눌러주세요.</p>
+          <p style="font-size: 0.75rem; color: #10b981; margin-top: 0.25rem;" x-show="emailVerified">✓ 이메일 인증이 완료되었습니다. 나머지 정보를 입력하고 회원가입을 완료하세요.</p>
+        </div>
+        
+        <!-- 비밀번호 -->
+        <div class="form-group">
+          <label class="form-label">비밀번호 <span style="color:#ef4444">*</span></label>
+          <input type="password" class="form-input" x-model="password" placeholder="6자 이상" minlength="6" required>
+        </div>
+        
+        <!-- 생년월일 -->
+        <div class="form-group">
+          <label class="form-label">생년월일 <span style="color:#ef4444">*</span></label>
+          <input type="date" class="form-input" x-model="birthDate" required>
+        </div>
+        
+        <!-- 주소 -->
+        <div class="form-group">
+          <label class="form-label">주소 <span style="color:#ef4444">*</span></label>
+          <input type="text" class="form-input" x-model="address" placeholder="예: 서울특별시 강남구 테헤란로 123" required>
+        </div>
+        
+        <!-- 성별 (Select Box) -->
+        <div class="form-group">
+          <label class="form-label">성별 <span style="color:#ef4444">*</span></label>
+          <select class="form-input" x-model="gender" required style="cursor:pointer;">
+            <option value="" disabled selected>성별을 선택하세요</option>
+            <option value="male">남성</option>
+            <option value="female">여성</option>
+          </select>
+        </div>
+        
+        <!-- 휴대폰번호 -->
+        <div class="form-group">
+          <label class="form-label">휴대폰번호 <span style="color:#ef4444">*</span></label>
+          <input type="tel" class="form-input" x-model="phoneNumber" placeholder="010-0000-0000" required @input="phoneNumber = formatPhoneNumber(phoneNumber)" maxlength="13">
+        </div>
+        
+        <!-- Instructor-specific fields -->
+        <template x-if="role === 'instructor'">
+          <div>
+            <div class="form-group">
+              <label class="form-label">강사증 업로드 <span style="color:#ef4444">*</span></label>
+              <input type="file" id="certFileInput" accept="image/*" @change="handleCertificateUpload($event)" style="display:none">
+              <label for="certFileInput" class="cert-upload" :class="{ 'uploaded': certificateFile }">
+                <div x-show="!certificatePreview" style="text-align:center; color:#6b7280;">
+                  <div style="font-size:2rem; margin-bottom:0.25rem;">📄</div>
+                  <p style="font-size:0.875rem;">강사증 이미지를 업로드하세요</p>
+                  <p style="font-size:0.75rem; color:#9ca3af;">JPG, PNG (최대 40MB)</p>
+                </div>
+                <div x-show="certificatePreview" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                  <img :src="certificatePreview" style="max-height:7rem; max-width:100%; object-fit:contain; border-radius:0.25rem;">
+                </div>
+              </label>
+              <p style="font-size:0.75rem; color:#6b7280; margin-top:0.25rem;">AI가 강사증의 이름과 생년월일을 자동으로 검증합니다.</p>
+            </div>
+          </div>
+        </template>
+        
+        <!-- Privacy Consent (Enhanced) -->
+        <div class="privacy-section" style="background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding:1.25rem; border-radius:0.75rem; border:1px solid #bae6fd; margin:1.5rem 0;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+            <span style="font-size:1.25rem;">🔒</span>
+            <h3 style="font-weight:700; color:#0c4a6e; font-size:1rem; margin:0;">개인정보 수집·이용 동의</h3>
+          </div>
+          
+          <!-- 수집 항목 -->
+          <div style="margin-bottom:0.75rem;">
+            <p style="font-weight:600; color:#0369a1; font-size:0.875rem; margin-bottom:0.375rem;">📋 수집 항목 (필수)</p>
+            <p style="font-size:0.8125rem; color:#475569; line-height:1.5; margin:0;">이름, 이메일, 비밀번호, 생년월일, 주소, 성별, 휴대폰번호</p>
+          </div>
+          
+          <!-- 이용 목적 -->
+          <div style="margin-bottom:0.75rem;">
+            <p style="font-weight:600; color:#0369a1; font-size:0.875rem; margin-bottom:0.375rem;">🎯 이용 목적</p>
+            <ul style="font-size:0.8125rem; color:#475569; line-height:1.6; margin:0; padding-left:1rem;">
+              <li>회원 가입 및 관리, 본인 확인</li>
+              <li>AI 튜터 학습 분석 및 맞춤 콘텐츠 추천</li>
+              <li>강사와 학생 간 수업 매칭 및 커뮤니케이션</li>
+              <li>서비스 개선을 위한 통계 분석</li>
+            </ul>
+          </div>
+          
+          <!-- 보유 기간 -->
+          <div style="margin-bottom:0.75rem;">
+            <p style="font-weight:600; color:#0369a1; font-size:0.875rem; margin-bottom:0.375rem;">⏱️ 보유 및 이용 기간</p>
+            <p style="font-size:0.8125rem; color:#475569; line-height:1.5; margin:0;"><strong style="color:#0f172a;">회원 탈퇴 시까지</strong> (단, 관계법령에 따라 보존 필요 시 해당 기간까지)</p>
+          </div>
+          
+          <!-- 동의 거부 권리 -->
+          <div style="background:#fff; padding:0.75rem; border-radius:0.5rem; border:1px solid #e2e8f0; margin-bottom:1rem;">
+            <p style="font-size:0.75rem; color:#64748b; line-height:1.5; margin:0;">
+              <strong style="color:#475569;">동의를 거부할 권리:</strong> 귀하는 개인정보 수집·이용에 동의를 거부할 수 있습니다.<br>
+              <strong style="color:#dc2626;">거부 시 불이익:</strong> 동의하지 않을 경우 회원가입 및 서비스 이용이 제한됩니다.
+            </p>
+          </div>
+          
+          <!-- 전문 보기 링크 -->
+          <div style="text-align:right; margin-bottom:0.75rem;">
+            <a href="#" @click.prevent="showPrivacyPolicy = true" style="font-size:0.8125rem; color:#2563eb; text-decoration:underline; font-weight:500;">개인정보처리방침 전문 보기 →</a>
+          </div>
+          
+          <!-- 동의 체크박스 -->
+          <label style="display:flex; align-items:flex-start; gap:0.75rem; cursor:pointer; padding:0.75rem; background:#fff; border-radius:0.5rem; border:2px solid #e2e8f0;" :style="privacyConsent ? 'border-color:#2563eb; background:#eff6ff;' : ''">
+            <input type="checkbox" x-model="privacyConsent" style="width:auto; margin-top:0.15rem; accent-color:#2563eb;" required>
+            <div>
+              <span style="font-weight:600; color:#1e293b; font-size:0.875rem;">위 내용을 확인하였으며 개인정보 수집·이용에 동의합니다 <span style="color:#ef4444">*</span></span>
+            </div>
+          </label>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary" :disabled="isLoading || !privacyConsent || (role === 'instructor' && !certificateFile) || !birthDate || !phoneNumber || !gender || !address">
+          <template x-if="isLoading"><div class="loading-spinner"></div></template>
+          <template x-if="!isLoading">
+            <span x-text="role === 'instructor' ? '강사로 가입하기' : '학생으로 가입하기'"></span>
+          </template>
+        </button>
+        
+        <p x-show="!privacyConsent" style="font-size:0.75rem; color:#ef4444; text-align:center; margin-top:0.5rem;">개인정보 수집 동의 후 가입이 가능합니다.</p>
+      </form>
+      
+      <div class="divider">또는</div>
+      
+      <button class="btn btn-google" @click="handleGoogleLogin()" :disabled="isLoading">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        <span>Google로 계속하기</span>
+      </button>
+      
+      <div class="toggle-mode">
+        <template x-if="mode === 'login'">
+          <span>계정이 없으신가요? <a href="#" class="link" @click.prevent="mode = 'register'">회원가입</a></span>
+        </template>
+        <template x-if="mode === 'register'">
+          <span>이미 계정이 있으신가요? <a href="#" class="link" @click.prevent="mode = 'login'">로그인</a></span>
+        </template>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Additional Info Modal for Google Login Users -->
+  <div x-show="showAdditionalInfoModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" x-cloak>
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full" @click.stop>
+      <!-- Modal Header -->
+      <div class="p-6 border-b" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #2563eb;">
+        <h2 style="font-size:1.25rem; font-weight:700; color:#111827;">📝 추가 정보 입력</h2>
+        <p style="font-size:0.875rem; color:#6b7280; margin-top:0.5rem;">Google 로그인을 완료하기 위해 추가 정보를 입력해주세요.</p>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="p-6" style="max-height:70vh; overflow-y:auto;">
+        <!-- Role badge based on selected tab -->
+        <div style="padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem;"
+          :style="role === 'instructor' ? 'background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;' : 'background:linear-gradient(135deg,#dbeafe,#bfdbfe);border:1px solid #3b82f6;'">
+          <p style="font-size: 0.875rem; margin: 0;"
+            :style="role === 'instructor' ? 'color:#92400e;' : 'color:#1e40af;'">
+            <strong x-text="role === 'instructor' ? '⚠️ 강사 가입 안내:' : 'ℹ️ 안내:'"></strong>
+            <span x-text="role === 'instructor' ? ' 강사로 가입 신청됩니다. 관리자 승인 후 로그인 가능합니다.' : ' 학생으로 가입됩니다.'"></span>
+          </p>
+        </div>
+        
+        <!-- Name -->
+        <div class="form-group">
+          <label class="form-label">이름 <span style="color:#ef4444">*</span></label>
+          <input type="text" class="form-input" x-model="displayName" placeholder="홍길동" required>
+        </div>
+        
+        <!-- Birth Date -->
+        <div class="form-group">
+          <label class="form-label">생년월일 <span style="color:#ef4444">*</span></label>
+          <input type="date" class="form-input" x-model="birthDate" required>
+        </div>
+        
+        <!-- Address -->
+        <div class="form-group">
+          <label class="form-label">주소 <span style="color:#ef4444">*</span></label>
+          <input type="text" class="form-input" x-model="address" placeholder="예: 서울특별시 강남구 테헤란로 123" required>
+        </div>
+        
+        <!-- Gender (Select Box) -->
+        <div class="form-group">
+          <label class="form-label">성별 <span style="color:#ef4444">*</span></label>
+          <select class="form-input" x-model="gender" required style="cursor:pointer;">
+            <option value="" disabled selected>성별을 선택하세요</option>
+            <option value="male">남성</option>
+            <option value="female">여성</option>
+          </select>
+        </div>
+        
+        <!-- Phone Number -->
+        <div class="form-group">
+          <label class="form-label">휴대폰번호 <span style="color:#ef4444">*</span></label>
+          <input type="tel" class="form-input" x-model="phoneNumber" placeholder="010-0000-0000" required @input="phoneNumber = formatPhoneNumber(phoneNumber)" maxlength="13">
+        </div>
+        
+        <!-- Privacy Consent (Enhanced) -->
+        <div class="privacy-section" style="background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding:1rem; border-radius:0.75rem; border:1px solid #bae6fd; margin:1rem 0;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+            <span style="font-size:1.25rem;">🔒</span>
+            <h3 style="font-weight:700; color:#0c4a6e; font-size:0.9rem; margin:0;">개인정보 수집·이용 동의</h3>
+          </div>
+          
+          <div style="margin-bottom:0.5rem;">
+            <p style="font-weight:600; color:#0369a1; font-size:0.8rem; margin-bottom:0.25rem;">📋 수집 항목</p>
+            <p style="font-size:0.75rem; color:#475569; margin:0;">이름, 이메일, 생년월일, 주소, 성별, 휴대폰번호</p>
+          </div>
+          
+          <div style="margin-bottom:0.5rem;">
+            <p style="font-weight:600; color:#0369a1; font-size:0.8rem; margin-bottom:0.25rem;">🎯 이용 목적</p>
+            <ul style="font-size:0.75rem; color:#475569; margin:0; padding-left:1rem; line-height:1.5;">
+              <li>회원 가입 및 관리, 본인 확인</li>
+              <li>AI 튜터 학습 분석 및 맞춤 콘텐츠 추천</li>
+              <li>강사와 학생 간 수업 매칭</li>
+            </ul>
+          </div>
+          
+          <div style="background:#fff; padding:0.5rem; border-radius:0.375rem; border:1px solid #e2e8f0; margin-bottom:0.75rem;">
+            <p style="font-size:0.7rem; color:#64748b; margin:0; line-height:1.4;">
+              <strong>동의 거부 권리:</strong> 귀하는 동의를 거부할 수 있습니다.<br>
+              <strong style="color:#dc2626;">거부 시 불이익:</strong> 회원가입 및 서비스 이용이 제한됩니다.
+            </p>
+          </div>
+          
+          <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; padding:0.5rem; background:#fff; border-radius:0.375rem; border:2px solid #e2e8f0;" :style="privacyConsent ? 'border-color:#2563eb; background:#eff6ff;' : ''">
+            <input type="checkbox" x-model="privacyConsent" style="width:auto; margin-top:0.1rem; accent-color:#2563eb;">
+            <span style="font-weight:600; color:#1e293b; font-size:0.8rem;">위 내용을 확인하였으며 개인정보 수집·이용에 동의합니다 <span style="color:#ef4444">*</span></span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="p-4 border-t" style="display:flex; gap:8px; justify-content:center;">
+        <button @click="_fb.signOut(_fb.auth); resetForm();" style="padding:0.75rem 1.5rem; border:2px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:white;">취소</button>
+        <button @click="saveAdditionalInfo()" :disabled="isLoading || !birthDate || !address || !phoneNumber || !gender || !privacyConsent || !displayName" style="padding:0.75rem 2rem; background:#2563eb; color:white; border:none; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.875rem; display:flex; align-items:center; gap:0.5rem;" :style="(!birthDate || !address || !phoneNumber || !gender || !privacyConsent || !displayName) ? 'opacity:0.5; cursor:not-allowed;' : ''">
+          <template x-if="isLoading"><div class="loading-spinner" style="border-color:#ffffff; border-top-color:transparent;"></div></template>
+          <span x-show="!isLoading">저장하고 계속하기</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Privacy Policy Full Text Modal -->
+  <div x-show="showPrivacyPolicy" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" x-cloak>
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" @click.stop>
+      <!-- Modal Header -->
+      <div class="p-6 border-b flex justify-between items-center" style="background: linear-gradient(135deg, #eff6ff, #dbeafe);">
+        <div>
+          <h2 style="font-size:1.25rem; font-weight:700; color:#111827;">📋 개인정보처리방침</h2>
+          <p style="font-size:0.875rem; color:#6b7280; margin-top:0.25rem;">TutorBridge 서비스 이용을 위한 개인정보 처리 방침</p>
+        </div>
+        <button @click="showPrivacyPolicy = false" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#6b7280;">×</button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto" style="max-height:60vh;">
+        <div style="font-size:0.875rem; line-height:1.6; color:#374151;">
+          <h3 style="font-weight:700; color:#111827; margin-top:1rem; margin-bottom:0.5rem;">제1조 (개인정보의 처리 목적)</h3>
+          <p style="margin-bottom:1rem;">TutorBridge는 다음의 목적을 위하여 개인정보를 처리합니다. 처리한 개인정보는 다음의 목적 이외의 용도로는 사용되지 않으며, 이용 목적이 변경될 시에는 사전 동의를 구하겠습니다.</p>
+          <ul style="margin-left:1rem; margin-bottom:1rem;">
+            <li>회원 가입 및 관리, 본인 확인</li>
+            <li>AI 튜터 학습 분석 및 맞춤형 콘텐츠 추천</li>
+            <li>강사와 학생 간 수업 매칭 및 커뮤니케이션</li>
+            <li>서비스 개선을 위한 통계 분석</li>
+          </ul>
+          
+          <h3 style="font-weight:700; color:#111827; margin-top:1rem; margin-bottom:0.5rem;">제2조 (개인정보의 처리 및 보유 기간)</h3>
+          <p style="margin-bottom:1rem;">TutorBridge는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에 동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.</p>
+          <p style="margin-bottom:1rem;"><strong>보유 기간:</strong> 회원 탈퇴 시까지<br>(단, 관계법령에 따라 보존 필요 시 해당 기간까지)</p>
+          
+          <h3 style="font-weight:700; color:#111827; margin-top:1rem; margin-bottom:0.5rem;">제3조 (개인정보의 제3자 제공)</h3>
+          <p style="margin-bottom:1rem;">TutorBridge는 원칙적으로 이용자의 개인정보를 제3자에게 제공하지 않습니다. 다만, 다음의 경우에는 예외로 합니다:</p>
+          <ul style="margin-left:1rem; margin-bottom:1rem;">
+            <li>이용자가 사전에 동의한 경우</li>
+            <li>법령의 규정에 의거하거나, 수사 목적으로 법령에 정해진 절차와 방법에 따라 수사기관의 요구가 있는 경우</li>
+          </ul>
+          
+          <h3 style="font-weight:700; color:#111827; margin-top:1rem; margin-bottom:0.5rem;">제4조 (정보주체의 권리·의무 및 행사방법)</h3>
+          <p style="margin-bottom:1rem;">이용자는 개인정보주체로서 다음과 같은 권리를 행사할 수 있습니다:</p>
+          <ul style="margin-left:1rem; margin-bottom:1rem;">
+            <li>개인정보 열람 요구</li>
+            <li>오류 등이 있을 경우 정정 요구</li>
+            <li>삭제 요구</li>
+            <li>처리정지 요구</li>
+          </ul>
+          
+          <h3 style="font-weight:700; color:#111827; margin-top:1rem; margin-bottom:0.5rem;">제5조 (개인정보의 파기)</h3>
+          <p style="margin-bottom:1rem;">TutorBridge는 원칙적으로 개인정보 보유기간의 경과, 처리목적 달성 등 개인정보가 불필요하게 되었을 때에는 지체없이 해당 개인정보를 파기합니다.</p>
+          
+          <h3 style="font-weight:700; color:#111827; margin-top:1rem; margin-bottom:0.5rem;">제6조 (동의 거부 권리 및 불이익)</h3>
+          <p style="margin-bottom:1rem;">귀하는 개인정보 수집·이용에 동의를 거부할 권리가 있습니다. 동의를 거부할 경우 회원가입 및 서비스 이용이 제한될 수 있습니다.</p>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="p-4 border-t" style="text-align:center;">
+        <button @click="showPrivacyPolicy = false" style="padding:0.75rem 2rem; background:#2563eb; color:white; border:none; border-radius:0.5rem; cursor:pointer; font-weight:600;">확인</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Login Application -->
+  <script type="module" src="js/login.js"></script>
+  
+  <!-- Alpine.js MUST load AFTER loginApp is defined -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<footer style="text-align:center; padding:1.5rem; font-size:0.75rem; color:#9ca3af; border-top:1px solid #e5e7eb; margin-top:auto; background:white;">
+  © 2026 TutorBridge. All Rights Reserved. Developed by Joo Han-tae &amp; Kim Min-gi &amp; Son Jun-hyuk
+</footer>
+</body>
+</html>

@@ -1,0 +1,84 @@
+/* Highlight Popup - Core Feature */
+.highlight-popup {
+  position: absolute;
+  z-index: 100;
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-highlight);
+  border: 1px solid var(--primary-200);
+  min-width: 180px;
+  padding: var(--space-2);
+  animation: popupIn 0.2s ease-out;
+}
+
+.highlight-popup::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid white;
+}
+
+.popup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.popup-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.popup-action:hover {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.popup-action.primary {
+  background: var(--primary-600);
+  color: white;
+}
+
+.popup-action.primary:hover {
+  background: var(--primary-700);
+}
+
+.popup-action svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.popup-divider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: var(--space-2) 0;
+}
+
+/* Text Selection Highlighting */
+::selection.highlight-active {
+  background: var(--primary-200);
+  color: var(--primary-800);
+}
+
+/* Highlighted text in messages */
+.message-content .highlighted-text {
+  background: var(--primary-100);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}

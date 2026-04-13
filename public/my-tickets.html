@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TutorBridge - 내 문의</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="/js/responsive-switcher.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import(`/js/my-tickets.js?v=${Date.now()}`).then(() => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js';
+      s.defer = true;
+      document.head.appendChild(s);
+    });
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: #f8fafc; padding-bottom: 80px; }
+    .safe-area-top { padding-top: env(safe-area-inset-top); }
+    .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    
+    /* AI Tutor Style */
+    .status-badge { 
+      display: inline-flex; 
+      align-items: center; 
+      padding: 4px 12px; 
+      border-radius: 20px; 
+      font-size: 12px; 
+      font-weight: 600; 
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-responded { background: #d1fae5; color: #065f46; }
+    .status-closed { background: #f3f4f6; color: #4b5563; }
+    
+    .ticket-list-item {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ticket-list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .ticket-list-item.active { box-shadow: 0 0 0 2px #2563eb; }
+    
+    .section-card {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .response-card {
+      background: #eff6ff;
+      border-radius: 12px;
+      padding: 16px;
+      border-left: 4px solid #3b82f6;
+    }
+    .instructor-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body x-data="ticketApp()" x-init="init()">
+  
+  <!-- LIST VIEW -->
+  <div x-show="!showDetail" class="min-h-screen">
+    <!-- Header -->
+    <div class="sticky top-0 z-40 bg-white border-b safe-area-top">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <button @click="goBack()" class="p-2 -ml-2 hover:bg-gray-100 rounded-full">
+            <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <h1 class="text-lg font-bold text-gray-900">내 문의 내역</h1>
+        </div>
+        <a href="contact.html" class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg">
+          + 새 문의
+        </a>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="p-4">
+      <!-- Loading -->
+      <div x-show="loading" class="text-center py-12">
+        <div class="animate-spin w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+        <p class="text-sm text-gray-500 mt-4">로딩 중...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div x-show="!loading && tickets.length === 0" class="text-center py-16">
+        <div class="text-6xl mb-4">📭</div>
+        <p class="text-gray-600 font-medium text-lg">등록된 문의가 없습니다</p>
+        <p class="text-sm text-gray-400 mt-2">문의가 필요하면 '새 문의'를 눌러주세요</p>
+      </div>
+
+      <!-- Ticket List -->
+      <div x-show="!loading && tickets.length > 0" class="space-y-3">
+        <template x-for="ticket in tickets" :key="ticket.id">
+          <div class="ticket-list-item" @click="openTicket(ticket)">
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="status-badge" 
+                      :class="{
+                        'status-pending': (ticket.status === 'pending' || !ticket.status) && !hasResponse(ticket),
+                        'status-responded': ticket.status === 'responded' || hasResponse(ticket),
+                        'status-closed': ticket.status === 'closed'
+                      }"
+                      x-text="ticket.status === 'responded' || hasResponse(ticket) ? '답변 완료' : (ticket.status === 'closed' ? '종료' : '대기 중')">
+                </span>
+                <span class="text-xs text-gray-400" x-text="formatDate(ticket.created_at || ticket.createdAt)"></span>
+              </div>
+            </div>
+            <h3 class="font-semibold text-gray-900 text-base mb-2" x-text="getTicketTitle(ticket)"></h3>
+            <p class="text-sm text-gray-500 line-clamp-2" x-text="getTicketPreview(ticket)"></p>
+            <div x-show="ticket.instructor_name || ticket.respondentName" class="mt-2 flex items-center gap-2">
+              <span class="text-xs text-blue-600 font-medium" x-text="'답변: ' + (ticket.instructor_name || ticket.respondentName)"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL VIEW (AI Tutor Style) -->
+  <div x-show="showDetail" class="min-h-screen bg-white">
+    <!-- Detail Header -->
+    <div class="sticky top-0 z-40 bg-white border-b safe-area-top">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <button @click="closeDetail()" class="p-2 -ml-2 hover:bg-gray-100 rounded-full">
+            <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="status-badge" 
+                    :class="{
+                      'status-pending': (selectedTicket?.status === 'pending' || !selectedTicket?.status) && !(selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply),
+                      'status-responded': selectedTicket?.status === 'responded' || selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply,
+                      'status-closed': selectedTicket?.status === 'closed'
+                    }"
+                    x-text="selectedTicket?.status === 'responded' || selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply ? '답변 완료' : (selectedTicket?.status === 'closed' ? '종료' : '대기 중')">
+              </span>
+              <span class="text-xs text-gray-400" x-text="formatDate(selectedTicket?.created_at || selectedTicket?.createdAt)"></span>
+            </div>
+          </div>
+        </div>
+        <button @click="closeDetail()" class="p-2 hover:bg-gray-100 rounded-full">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-4 pb-3">
+        <h1 class="text-xl font-bold text-gray-900" x-text="getTicketTitle(selectedTicket)"></h1>
+        <p class="text-sm text-gray-500 mt-1" x-text="selectedTicket?.instructor_name || selectedTicket?.respondentName || '관리자 답변 대기중'"></p>
+      </div>
+    </div>
+
+    <!-- Detail Content -->
+    <div class="p-4">
+      <!-- My Question Section -->
+      <div class="section-card">
+        <div class="section-title">
+          <span>📋</span>
+          <span>내 질문</span>
+        </div>
+        <div class="bg-white rounded-lg p-4 border border-gray-200">
+          <p class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed" x-html="formatContent(selectedTicket?.highlighted_text || selectedTicket?.content || selectedTicket?.message || '(내용 없음)')"></p>
+        </div>
+      </div>
+
+      <!-- Instructor Response Section -->
+      <div x-show="selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply" class="response-card">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="instructor-avatar" x-text="getInitials(selectedTicket?.instructor_name || selectedTicket?.respondentName || '관리자')"></div>
+          <div>
+            <p class="font-semibold text-gray-900" x-text="(selectedTicket?.instructor_name || selectedTicket?.respondentName || '관리자') + ' 님의 답변'"></p>
+            <p class="text-xs text-gray-500" x-text="'답변일: ' + formatDate(selectedTicket?.responded_at || selectedTicket?.updated_at || selectedTicket?.updatedAt)"></p>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg p-4">
+          <p class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed" x-text="selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply"></p>
+        </div>
+      </div>
+
+      <!-- No Response Yet -->
+      <div x-show="!(selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply)" class="text-center py-12">
+        <div class="text-4xl mb-3">⏳</div>
+        <p class="text-gray-500 font-medium">답변을 기다리고 있습니다</p>
+        <p class="text-sm text-gray-400 mt-1">빠른 시일 내에 답변드리겠습니다</p>
+      </div>
+
+      <!-- Follow-up Input (if responded) -->
+      <div x-show="selectedTicket?.response || selectedTicket?.instructor_response || selectedTicket?.admin_response || selectedTicket?.answer || selectedTicket?.reply" class="mt-6 pt-6 border-t">
+        <p class="text-sm font-medium text-gray-700 mb-3">💬 추가 메시지</p>
+        <p class="text-xs text-gray-400 mb-3">답변에 대해 추가 질문이 있으시면 입력해주세요</p>
+        <div class="flex gap-2">
+          <input type="text" 
+                 x-model="followUpMessage" 
+                 placeholder="추가 질문을 입력하세요..." 
+                 class="flex-1 px-4 py-3 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 @keydown.enter="sendFollowUp()">
+          <button @click="sendFollowUp()" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition">
+            전송
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div x-show="!showDetail" class="fixed bottom-0 left-0 right-0 bg-white border-t safe-area-bottom" style="z-index:40;">
+    <div class="flex justify-around items-center h-16 px-4">
+      <a href="dashboard-mobile.html" class="nav-item">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span>홈</span>
+      </a>
+      <a href="community-mobile.html" class="nav-item">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span>커뮤니티</span>
+      </a>
+      <a href="chat.html" class="nav-item">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        <span>AI튜터</span>
+      </a>
+      <a href="#" class="nav-item" onclick="const role=localStorage.getItem('userRole'); location.href=(role==='instructor'||role==='admin'||role==='staff')?'instructorpage.html':'mypage.html'; return false;">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span>마이</span>
+      </a>
+    </div>
+  </div>
+
+  <style>
+    .nav-item { display:flex; flex-direction:column; align-items:center; gap:4px; color:#9ca3af; font-size:12px; text-decoration:none; }
+    .nav-item svg { width:24px; height:24px; }
+    .nav-item[href*="my-tickets"] { color:#2563eb; }
+  </style>
+</body>
+</html>

@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TutorBridge - AI 튜터 스마트 학습</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Marked.js for Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- DOMPurify for XSS protection -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+  
+  <!-- Day.js for dates -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/ko.js"></script>
+
+  <!-- Theme/Language init (before Alpine) -->
+  <script src="js/theme.js"></script>
+  
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components/header.css">
+  <link rel="stylesheet" href="css/components/chat.css">
+  <link rel="stylesheet" href="css/components/sidebar.css">
+  <link rel="stylesheet" href="css/components/highlight-menu.css">
+  
+  <style>
+    [x-cloak] { display: none !important; }
+    .notification-item:hover { background-color: #f9fafb; }
+
+    @media (max-width: 768px) {
+      /* 사이드바 오버레이 방식으로 전체화면 */
+      .sidebar { width: 100% !important; max-width: 320px; }
+      /* 채팅 입력 영역 터치 영역 확보 */
+      .chat-input-area textarea { font-size: 16px; } /* iOS 확대 방지 */
+      /* 하이라이트 팝업 위치 조정 */
+      .highlight-popup { max-width: calc(100vw - 2rem); left: 1rem !important; right: 1rem; width: auto !important; }
+      /* 모바일 네비게이션 */
+      .nav { padding: 0 0.75rem !important; }
+      .nav-links { display: none !important; }
+      .nav-logo { font-size: 1.1rem !important; }
+    }
+    @media (min-width: 769px) {
+      .nav-links { display: flex !important; }
+    }
+  </style>
+</head>
+<body x-data="tutorApp()" x-init="init()" x-cloak>
+  
+  <!-- Navigation (Dashboard Style) -->
+  <nav class="nav" style="background: white; border-bottom: 1px solid #e5e7eb; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50;">
+    <div style="display:flex; align-items:center; gap:2rem;">
+      <!-- Sidebar Toggle Button -->
+      <button style="background:none; border:none; cursor:pointer; padding:0.5rem; border-radius:0.5rem; transition:background 0.1s;" @click="sidebarOpen = true" aria-label="메뉴 열기" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#374151" width="24" height="24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+      <a href="dashboard.html" class="nav-logo" style="font-size: 1.25rem; font-weight: 700; color: #111827; text-decoration: none;">Tutor<span style="color: #2563eb;">Bridge</span></a>
+      <div class="nav-links" style="display: flex; gap: 1.5rem; align-items: center;">
+        <a href="chat.html" class="nav-link" style="color: #6b7280; text-decoration: none; font-size: 0.875rem; font-weight: 500; padding: 0.5rem 0; border-bottom: 2px solid transparent; color: #2563eb; border-bottom-color: #2563eb;">💬 AI 튜터</a>
+        <a href="dashboard.html" class="nav-link" style="color: #6b7280; text-decoration: none; font-size: 0.875rem; font-weight: 500; padding: 0.5rem 0; border-bottom: 2px solid transparent;">📊 대시보드</a>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem; position: relative;">
+      <!-- 알림 버튼 -->
+      <button style="background:none; border:none; cursor:pointer; position:relative;" @click="showNotifications = !showNotifications" aria-label="알림">
+        <svg width="22" height="22" fill="none" stroke="#6b7280" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        <span x-show="unreadCount > 0" x-text="unreadCount" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
+      </button>
+      
+      <!-- Notifications Dropdown -->
+      <div x-show="showNotifications" @click.away="showNotifications = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(400px, calc(100vw - 1rem)); max-height:70vh; overflow-y:auto; background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:1rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-weight:600; font-size:1.125rem;">알림</h3>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button x-show="notifications.length > 0" @click.stop="markAllNotificationsRead()" style="background:none; border:none; cursor:pointer; font-size:0.75rem; color:#2563eb; padding:0.25rem 0.5rem; border-radius:0.375rem; transition:background 0.1s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'">모두 읽음</button>
+            <button style="background:none; border:none; cursor:pointer; padding:0.25rem;" @click="showNotifications = false">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div style="padding:0;">
+          <template x-if="notifications.length === 0">
+            <div style="padding:2rem; text-align:center; color:#9ca3af;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#9ca3af" width="48" height="48" style="margin:0 auto 0.75rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              <p>새로운 알림이 없습니다</p>
+            </div>
+          </template>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div style="padding:1rem; border-bottom:1px solid #e5e7eb; transition:background-color 0.15s;" class="notification-item">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                <span style="font-weight:600; font-size:0.95rem; cursor:pointer; flex:1;" x-text="notification.title" @click="handleNotification(notification)"></span>
+                <div style="display:flex; align-items:center; gap:0.25rem; margin-left:0.5rem; flex-shrink:0;">
+                  <span style="font-size:0.75rem; color:#9ca3af; white-space:nowrap;" x-text="formatDate(notification.created_at)"></span>
+                  <button @click.stop="deleteNotification(notification)" style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; border-radius:4px; line-height:1; transition:color 0.1s;" title="읽음 처리" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p style="font-size:0.875rem; color:#6b7280; line-height:1.5; cursor:pointer;" x-text="notification.message" @click="handleNotification(notification)"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+      
+      <!-- 설정 버튼 (AI 채팅방에서만 표시) -->
+      <button x-show="true" style="background:none; border:none; cursor:pointer;" @click="showSettingsDropdown = !showSettingsDropdown" aria-label="채팅 설정">
+        <svg width="22" height="22" fill="none" stroke="#6b7280" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.87l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.375-.312-.687-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.87l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+      
+      <!-- 프로필 버튼 -->
+      <div @click="showProfileDropdown = !showProfileDropdown" style="cursor:pointer; width:36px; height:36px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;" aria-label="프로필">
+        <img x-show="photoURL" :src="photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+        <div x-show="!photoURL" class="nav-avatar" x-text="userInitials" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.875rem;"></div>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div x-show="showProfileDropdown" @click.away="showProfileDropdown = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(200px, calc(100vw - 1rem)); background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:0.5rem;">
+          <a href="#" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none; border-radius:0.5rem; transition:background 0.1s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'" onclick="const role=localStorage.getItem('userRole'); location.href=(role==='instructor'||role==='admin'||role==='staff')?'instructorpage.html':'mypage.html'; return false;">
+            👤 마이페이지
+          </a>
+          <a href="settings.html" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none; border-radius:0.5rem; transition:background 0.1s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+            ⚙️ 설정
+          </a>
+          <button @click="Swal.fire({icon:'info',title:'준비 중입니다',text:'문의사항 기능은 준비 중입니다.',confirmButtonColor:'#2563eb'}); showProfileDropdown = false" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; background:none; border:none; cursor:pointer; border-radius:0.5rem; transition:background 0.1s; display:none;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+            💬 문의사항
+          </button>
+          <hr style="margin:0.25rem 0; border:none; border-top:1px solid #e5e7eb;">
+          <button @click="doLogout(); showProfileDropdown = false" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#dc2626; display:flex; align-items:center; gap:0.5rem; background:none; border:none; cursor:pointer; border-radius:0.5rem; transition:background 0.1s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='none'">
+            🚪 로그아웃
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" :class="{ 'open': sidebarOpen }" @click="sidebarOpen = false"></div>
+  
+  <!-- Sidebar -->
+  <aside class="sidebar" :class="{ 'open': sidebarOpen }">
+    <div class="sidebar-header">
+      <div class="logo">Tutor<span>Bridge</span></div>
+      <button class="sidebar-close" @click="sidebarOpen = false" aria-label="닫기">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24" height="24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    
+    <div class="user-info">
+      <div class="avatar" x-text="userInitials"></div>
+      <div class="user-details">
+        <div class="user-name" x-text="user?.displayName || '사용자'"></div>
+        <div class="user-role" x-text="userRole || '수강생'"></div>
+      </div>
+    </div>
+    
+    <nav class="sidebar-content" style="flex: 1; overflow-y: auto;">
+      <!-- New Chat Button -->
+      <div class="sidebar-section">
+        <button class="menu-item" @click="startNewChat()" style="background: var(--primary-600); color: white; border-radius: var(--radius-lg); margin: 0 var(--space-4);">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          <span class="menu-item-label">새 대화 시작</span>
+        </button>
+      </div>
+
+      <!-- Chat History -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">최근 대화</div>
+        <ul class="menu-list">
+          <template x-for="session in sortedChatHistory" :key="session.id">
+            <li class="history-item" :class="{ 'active': currentSessionId === session.id }" @click="loadChat(session.id)">
+              <div class="history-content">
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span x-show="session.pinned" style="color:#f59e0b; font-size:12px;">📌</span>
+                  <div class="history-item-title" x-text="session.title || '새 대화'"></div>
+                </div>
+                <div class="history-item-meta" x-text="formatDate(session.updated_at)"></div>
+              </div>
+              <button class="history-menu-btn" @click.stop="openChatMenu(session.id, $event)" aria-label="메뉴" style="min-width:28px; min-height:28px; display:flex; align-items:center; justify-content:center; background:#e5e7eb; border-radius:6px; border:none; cursor:pointer; flex-shrink:0; opacity:1; visibility:visible;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" width="16" height="16" style="color:#374151;">
+                  <path d="M10 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM10 8.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM11.5 15.5a1.5 1.5 0 10-3 0 1.5 1.5 0 003 0z"/>
+                </svg>
+              </button>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <!-- Chat Context Menu -->
+      <div class="chat-context-menu" x-show="showChatMenu" @click.outside="showChatMenu = false" :style="chatMenuPosition">
+        <button class="context-menu-item" @click="togglePinChat(selectedChatId)">
+          <span x-text="chatHistory.find(c => c.id === selectedChatId)?.pinned ? '📌 고정 해제' : '📌 상단 고정'"></span>
+        </button>
+        <button class="context-menu-item" @click="renameChat()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+          </svg>
+          <span>제목 변경</span>
+        </button>
+        <button class="context-menu-item delete" @click="deleteChat()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.562 0c-.34.058-.68.114-1.022.165m6.374-1.248c-1.25 0-2.5.05-3.75.15m13.5-0.15c-1.25 0-2.5-.05-3.75-.15" />
+          </svg>
+          <span>삭제</span>
+        </button>
+      </div>
+
+      <!-- My Tickets -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">나의 질문</div>
+        <ul class="menu-list">
+          <template x-for="ticket in myTickets" :key="ticket.id">
+            <li class="ticket-item" :class="'status-' + ticket.status" @click="viewTicket(ticket.id); sidebarOpen = false;">
+              <div class="ticket-item-title" x-text="ticket.student_question ? ticket.student_question.substring(0, 30) + (ticket.student_question.length > 30 ? '...' : '') : (ticket.highlighted_text ? ticket.highlighted_text.substring(0, 30) + '...' : ('티켓 #' + ticket.id.slice(-4)))"></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                <div class="ticket-item-status" :class="ticket.status" x-text="ticket.status === 'pending' ? '답변 대기중' : (ticket.status === 'in-progress' ? '진행중' : (ticket.status === 'resolved' ? '해결됨' : '대기중'))"></div>
+                <span x-show="ticket.instructor_name" style="font-size:0.7rem; color:#9ca3af;" x-text="ticket.instructor_name ? ticket.instructor_name + ' 강사' : ''"></span>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </nav>
+    
+    <div class="sidebar-footer">
+      <a href="my-courses.html" class="menu-item" style="text-decoration:none; color:inherit;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+        </svg>
+        <span class="menu-item-label">내 강의</span>
+      </a>
+      <button class="menu-item" @click="logout()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+        </svg>
+        <span class="menu-item-label">로그아웃</span>
+      </button>
+    </div>
+  </aside>
+  
+  <!-- Main Chat Container -->
+  <main class="chat-container">
+    <!-- Messages Area -->
+    <div class="messages-area" x-ref="messagesArea" @scroll="handleScroll()">
+      <div class="messages-list">
+        <!-- Empty State -->
+        <template x-if="messages.length === 0 && !isLoading">
+          <div class="empty-state">
+            <div class="empty-state-icon">🎓</div>
+            <h2>무엇을 도와드릴까요?</h2>
+            <p>AI 튜터에게 수학, 과학, 프로그래밍 등 어떤 주제든 질문해보세요. 텍스트를 드래그하면 추가 기능을 사용할 수 있습니다.</p>
+            <div class="suggested-topics">
+              <button class="topic-chip" @click="sendQuickMessage('이차방정식 푸는 법 알려줘')">이차방정식</button>
+              <button class="topic-chip" @click="sendQuickMessage('미분의 정의가 뭐야?')">미분</button>
+              <button class="topic-chip" @click="sendQuickMessage('Python for문 사용법')">Python</button>
+              <button class="topic-chip" @click="sendQuickMessage('영어 문법 질문')">영어</button>
+            </div>
+          </div>
+        </template>
+        
+        <!-- Messages -->
+        <template x-for="(message, index) in messages" :key="message.id || index">
+          <div class="message-wrapper" :class="message.role">
+            <div class="message-bubble" :class="message.role">
+              <div class="message-content" 
+                   x-html="renderMarkdown(message.content)"
+                   @mouseup="handleTextSelection($event, message, index)"
+                   @touchend="handleTextSelection($event, message, index)"></div>
+              
+              <!-- Highlight Popup -->
+              <div x-show="showHighlightPopup && selectedMessageIndex === index" 
+                   x-transition
+                   class="highlight-popup"
+                   :style="popupPosition"
+                   @click.outside="closeHighlightPopup()">
+                <div class="popup-actions">
+                  <button class="popup-action primary" @click="askFollowUp()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                    </svg>
+                    <span>이 부분 추가 설명해줘</span>
+                  </button>
+                  <button class="popup-action primary" @click="createTicket()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                    </svg>
+                    <span>강사님께 질문하기</span>
+                  </button>
+                  <div class="popup-divider"></div>
+                  <button class="popup-action" @click="suggestCorrection()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                    </svg>
+                    <span>내용 오류 수정 제안</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="message-meta" :class="message.role">
+                <template x-if="message.role === 'assistant'">
+                  <div class="message-avatar assistant">🤖</div>
+                </template>
+                <span x-text="formatTime(message.timestamp)"></span>
+                <template x-if="message.isStreaming">
+                  <span class="streaming-cursor"></span>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+        
+        <!-- Typing Indicator -->
+        <template x-if="isTyping">
+          <div class="message-wrapper assistant">
+            <div class="message-bubble assistant">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+    
+    <!-- Input Area -->
+    <div class="input-area">
+      <!-- 첨부 파일 프리뷰 -->
+      <div x-show="attachedFileName" style="padding: 0.5rem 1rem 0; max-width: 800px; margin: 0 auto;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--gray-100, #f3f4f6); border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem;">
+          <template x-if="attachedFilePreview">
+            <img :src="attachedFilePreview" style="width: 40px; height: 40px; object-fit: cover; border-radius: 0.25rem;" alt="미리보기">
+          </template>
+          <template x-if="!attachedFilePreview && attachedFileName">
+            <span style="font-size: 1.25rem;">📄</span>
+          </template>
+          <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-700, #374151);" x-text="attachedFileName"></span>
+          <button @click="removeAttachedFile()" style="background: none; border: none; cursor: pointer; color: var(--gray-500, #6b7280); padding: 0.25rem;" aria-label="첨부 해제">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      </div>
+      <div class="input-container">
+        <div class="input-wrapper">
+          <textarea 
+            class="message-input" 
+            x-model="currentMessage"
+            x-ref="messageInput"
+            placeholder="메시지를 입력하세요..."
+            rows="1"
+            @keydown.enter.prevent="if (!$event.shiftKey) sendMessage()"
+            @input="autoResize()"
+          ></textarea>
+        </div>
+        <div class="input-actions">
+          <button class="attach-button" @click="attachFile()" aria-label="파일 첨부">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.7l-7.81 7.81a1.5 1.5 0 002.122 2.122l7.81-7.81" />
+            </svg>
+          </button>
+          <button class="send-button" @click="sendMessage()" :disabled="(!currentMessage.trim() && !attachedFile) || isTyping" aria-label="전송">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Ticket Side Panel -->
+  <div x-show="showTicketModal" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full" class="fixed inset-0 z-50" style="pointer-events:none;">
+    <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); pointer-events:auto;" @click="showTicketModal = false"></div>
+    <div style="position:absolute; top:0; right:0; height:100%; width:min(420px, 100vw); background:white; box-shadow:-4px 0 24px rgba(0,0,0,0.15); display:flex; flex-direction:column; pointer-events:auto;" @click.stop>
+      <!-- 헤더 -->
+      <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+        <div>
+          <h3 style="font-weight:700; font-size:1.1rem; color:#1e40af;">👨‍🏫 강사님께 질문하기</h3>
+          <p style="font-size:0.75rem; color:#3b82f6; margin-top:2px;">AI가 해결하지 못한 부분을 강사님께 전달합니다</p>
+        </div>
+        <button @click="showTicketModal = false" style="background:none; border:none; cursor:pointer; padding:0.25rem; color:#6b7280;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <!-- 본문 -->
+      <div style="flex:1; overflow-y:auto; padding:1.5rem; display:flex; flex-direction:column; gap:1.25rem;">
+        <!-- 강사 선택 -->
+        <div>
+          <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">강사 선택 <span style="color:#dc2626;">*</span></label>
+          <template x-if="enrolledInstructors.length === 0">
+            <p style="font-size:0.875rem; color:#9ca3af; padding:0.75rem; background:#f9fafb; border-radius:0.5rem;">수강 중인 강의가 없습니다. 강의에 먼저 등록해주세요.</p>
+          </template>
+          <template x-if="enrolledInstructors.length > 0">
+            <select x-model="selectedInstructorId" @change="selectedInstructorName = enrolledInstructors.find(i => i.id === selectedInstructorId)?.name || ''" style="width:100%; padding:0.625rem 0.75rem; border:1px solid #d1d5db; border-radius:0.5rem; font-size:0.875rem; color:#374151; background:white; cursor:pointer;">
+              <option value="">-- 강사를 선택해주세요 --</option>
+              <template x-for="inst in enrolledInstructors" :key="inst.id">
+                <option :value="inst.id" x-text="inst.name + ' 강사'"></option>
+              </template>
+            </select>
+          </template>
+        </div>
+        <!-- 선택한 텍스트 -->
+        <div x-show="selectedText">
+          <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">📝 이해 안 된 부분</label>
+          <div style="background:#fefce8; border:1px solid #fde68a; padding:0.75rem; border-radius:0.5rem; font-size:0.875rem; color:#92400e; max-height:100px; overflow-y:auto; line-height:1.6;" x-text="selectedText"></div>
+        </div>
+        <!-- 질문 입력 -->
+        <div>
+          <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">💬 질문 내용 <span style="color:#dc2626;">*</span></label>
+          <textarea x-model="ticketQuestion" style="width:100%; padding:0.75rem; border:1px solid #d1d5db; border-radius:0.5rem; font-size:0.875rem; color:#374151; resize:vertical; font-family:inherit;" rows="4" placeholder="어떤 점이 궁금한지 자세히 설명해주세요..."></textarea>
+        </div>
+        <!-- 안내 -->
+        <div style="background:#f0f9ff; border:1px solid #bae6fd; padding:0.75rem; border-radius:0.5rem; font-size:0.8rem; color:#0369a1; line-height:1.6;">
+          💡 AI 대화 맥락(최근 6개)이 자동으로 포함되어 강사님이 상황을 바로 파악할 수 있습니다.
+        </div>
+      </div>
+      <!-- 버튼 -->
+      <div style="padding:1rem 1.5rem; border-top:1px solid #e5e7eb; display:flex; gap:0.75rem;">
+        <button @click="showTicketModal = false" style="flex:1; padding:0.75rem; border:1px solid #d1d5db; border-radius:0.5rem; background:white; color:#374151; font-weight:500; cursor:pointer; font-size:0.875rem;">취소</button>
+        <button @click="submitTicketToInstructor()" :disabled="isLoading || !selectedInstructorId || !ticketQuestion.trim()" style="flex:2; padding:0.75rem; border:none; border-radius:0.5rem; background:#2563eb; color:white; font-weight:600; cursor:pointer; font-size:0.875rem;" :style="(isLoading || !selectedInstructorId || !ticketQuestion.trim()) ? 'opacity:0.5;cursor:not-allowed;' : ''">
+          <span x-show="!isLoading">✉️ 티켓 발행</span>
+          <span x-show="isLoading">발행 중...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  
+  <!-- Settings Dropdown (알림창처럼 드롭다운 형식) -->
+  <div x-show="showSettingsDropdown" @click.away="showSettingsDropdown = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" style="position:fixed; top:70px; right:1rem; width:240px; background:white; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05); z-index:1000; overflow:hidden;" x-cloak>
+    <!-- Header with gradient -->
+    <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-weight:700; font-size:1rem; color:white; display:flex; align-items:center; gap:8px;">
+        <svg width="18" height="18" fill="none" stroke="white" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.87l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.375-.312-.687-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.369-.491l1.217.456c.355.133.75.072 1.076-.124.074-.044.147-.087.22-.127.331-.184.581-.496.644-.87l.212-1.281z"/></svg>
+        테마 설정
+      </h3>
+      <button style="background:rgba(255,255,255,0.2); border:none; cursor:pointer; padding:6px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" @click="showSettingsDropdown = false" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <!-- Theme Options -->
+    <div style="padding:16px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <!-- Light Theme Option -->
+        <button @click="applyTheme('light')" :style="theme==='light' ? 'border:2px solid #667eea; background:linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);' : 'border:1px solid #e2e8f0; background:white;'" style="display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+          <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #fff9e6 0%, #ffd93d 100%); display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(255,193,7,0.3);">
+            <span style="font-size:20px;">☀️</span>
+          </div>
+          <div style="text-align:left; flex:1;">
+            <div style="font-weight:600; font-size:0.9rem; color:#1a202c;">라이트 모드</div>
+            <div style="font-size:0.75rem; color:#718096;">밝은 테마</div>
+          </div>
+          <div x-show="theme==='light'" style="width:20px; height:20px; background:#667eea; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <svg width="12" height="12" fill="none" stroke="white" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          </div>
+        </button>
+        <!-- Dark Theme Option -->
+        <button @click="applyTheme('dark')" :style="theme==='dark' ? 'border:2px solid #667eea; background:linear-gradient(135deg, #2d3748 0%, #1a202c 100%);' : 'border:1px solid #e2e8f0; background:white;'" style="display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+          <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(102,126,234,0.3);">
+            <span style="font-size:20px;">🌙</span>
+          </div>
+          <div style="text-align:left; flex:1;">
+            <div :style="theme==='dark' ? 'color:white;' : 'color:#1a202c;'" style="font-weight:600; font-size:0.9rem;">다크 모드</div>
+            <div :style="theme==='dark' ? 'color:#a0aec0;' : 'color:#718096;'" style="font-size:0.75rem;">어두운 테마</div>
+          </div>
+          <div x-show="theme==='dark'" style="width:20px; height:20px; background:#667eea; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <svg width="12" height="12" fill="none" stroke="white" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Profile Modal -->
+  <div x-show="showProfileModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" @click.self="showProfileModal = false">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full" @click.stop>
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-lg font-semibold">👤 프로필</h3>
+        <button @click="showProfileModal = false" class="text-gray-400 hover:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-5">
+        <!-- Profile Avatar -->
+        <div style="text-align:center; margin-bottom:1.5rem;">
+          <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#8b5cf6); display:flex; align-items:center; justify-content:center; margin:0 auto 0.75rem; font-size:2rem; color:white; font-weight:700;" x-text="userInitials"></div>
+          <template x-if="!editingProfile">
+            <div>
+              <h3 style="font-size:1.25rem; font-weight:700;" x-text="user?.displayName || '사용자'"></h3>
+              <p style="color:#6b7280; font-size:0.875rem;" x-text="user?.email"></p>
+              <span style="display:inline-block; margin-top:0.5rem; padding:0.25rem 0.75rem; background:#dbeafe; color:#2563eb; border-radius:9999px; font-size:0.75rem; font-weight:600;" x-text="userRole || '수강생'"></span>
+            </div>
+          </template>
+          <template x-if="editingProfile">
+            <div style="text-align:left; margin-top:1rem;">
+              <label style="display:block; font-size:0.875rem; font-weight:500; color:#374151; margin-bottom:0.5rem;">이름</label>
+              <input type="text" x-model="profileForm.displayName" style="width:100%; padding:0.625rem; border:2px solid #e5e7eb; border-radius:0.5rem; font-size:0.875rem; box-sizing:border-box;" placeholder="이름을 입력하세요">
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="p-4 border-t" style="display:flex; gap:8px;">
+        <template x-if="!editingProfile">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button @click="editingProfile = true; profileForm.displayName = user?.displayName || ''" style="flex:1; padding:0.625rem; border:2px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:white;">✏️ 프로필 수정</button>
+            <button @click="logout()" style="flex:1; padding:0.625rem; border:none; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:#fee2e2; color:#dc2626;">로그아웃</button>
+          </div>
+        </template>
+        <template x-if="editingProfile">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button @click="editingProfile = false" style="flex:1; padding:0.625rem; border:2px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:white;">취소</button>
+            <button @click="saveProfile()" style="flex:1; padding:0.625rem; border:none; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:#2563eb; color:white;">저장</button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Student Ticket View Side Panel -->
+  <div x-show="showTicketViewModal" class="fixed inset-0 z-50" style="pointer-events:none;" x-cloak>
+    <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); pointer-events:auto;" @click="showTicketViewModal = false"></div>
+    <div x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full" style="position:absolute; top:0; right:0; height:100%; width:min(480px, 100vw); background:white; box-shadow:-4px 0 24px rgba(0,0,0,0.15); display:flex; flex-direction:column; pointer-events:auto;" @click.stop>
+      <template x-if="selectedTicket">
+        <div style="display:flex; flex-direction:column; height:100%;">
+          <!-- 헤더 -->
+          <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:flex-start; flex-shrink:0;">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.375rem;">
+                <span style="padding:2px 10px; border-radius:9999px; font-size:0.7rem; font-weight:600;"
+                  :style="selectedTicket.status === 'resolved' ? 'background:#dcfce7;color:#166534' : (selectedTicket.status === 'in-progress' ? 'background:#dbeafe;color:#1e40af' : 'background:#fef3c7;color:#92400e')"
+                  x-text="selectedTicket.status === 'resolved' ? '해결' : (selectedTicket.status === 'in-progress' ? '진행' : '대기')"></span>
+                <span style="font-size:0.75rem; color:#9ca3af;" x-text="formatDate(selectedTicket.created_at)"></span>
+              </div>
+              <h3 style="font-weight:700; font-size:1rem; color:#111827;" x-text="selectedTicket.student_question ? selectedTicket.student_question.substring(0,40) + (selectedTicket.student_question.length>40?'...':'') : '질문 상세'"></h3>
+              <p x-show="selectedTicket.instructor_name" style="font-size:0.8rem; color:#6b7280; margin-top:2px;" x-text="'담당: ' + (selectedTicket.instructor_name || '') + ' 강사'"></p>
+            </div>
+            <button @click="showTicketViewModal = false" style="background:none; border:none; cursor:pointer; padding:0.25rem; color:#6b7280; flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <!-- 본문 -->
+          <div style="flex:1; overflow-y:auto; padding:1.25rem 1.5rem; display:flex; flex-direction:column; gap:1rem;">
+            <!-- 내 질문 -->
+            <div style="background:#f9fafb; border-radius:0.75rem; padding:1rem;">
+              <h4 style="font-size:0.8rem; font-weight:600; color:#6b7280; margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.05em;">📋 내 질문</h4>
+              <p style="font-size:0.875rem; color:#374151; line-height:1.6;" x-text="selectedTicket.student_question || '(선택한 텍스트로 질문을 보냈습니다)'"></p>
+              <div x-show="selectedTicket.highlighted_text" style="margin-top:0.75rem; padding:0.75rem; background:#fefce8; border-left:3px solid #fbbf24; border-radius:0 0.375rem 0.375rem 0; font-size:0.8rem; color:#92400e; font-style:italic;" x-text="'&quot;' + selectedTicket.highlighted_text + '&quot;'"></div>
+            </div>
+            <!-- 강사 답변 -->
+            <template x-if="selectedTicket.instructor_response">
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:0.75rem; padding:1rem; border-left:4px solid #3b82f6;">
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+                  <span style="font-size:1.25rem;">👨‍🏫</span>
+                  <h4 style="font-size:0.875rem; font-weight:600; color:#1e40af;" x-text="(selectedTicket.instructor_name || '강사') + '님의 답변'"></h4>
+                </div>
+                <div style="font-size:0.875rem; color:#1e3a5f; line-height:1.7;" x-html="renderMarkdown(selectedTicket.instructor_response)"></div>
+                <div x-show="selectedTicket.responded_at" style="margin-top:0.75rem; font-size:0.75rem; color:#64748b;" x-text="'답변일: ' + formatDate(selectedTicket.responded_at)"></div>
+              </div>
+            </template>
+            <template x-if="!selectedTicket.instructor_response">
+              <div style="background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border:1px solid #fcd34d; border-radius:0.75rem; padding:1.25rem; text-align:center;">
+                <div style="font-size:1.5rem; margin-bottom:0.5rem;">⏳</div>
+                <div style="font-size:0.875rem; font-weight:600; color:#92400e; margin-bottom:0.25rem;">강사님이 검토 중입니다</div>
+                <div style="font-size:0.8rem; color:#b45309;">답변이 완료되면 알림으로 알려드릴게요</div>
+              </div>
+            </template>
+            <!-- 구분선: 강사 답변과 추가 질문 사이 -->
+            <div x-show="selectedTicket.follow_up_messages?.length > 0" style="border-top:2px dashed #d1d5db; margin:1rem 0; position:relative;">
+              <span style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:white; padding:0 0.75rem; font-size:0.75rem; color:#6b7280; font-weight:600;">💬 추가 대화</span>
+            </div>
+            
+            <!-- 추가 질문/답변 (모든 상태에서 표시) -->
+            <div x-show="selectedTicket.follow_up_messages?.length > 0" style="display:flex; flex-direction:column; gap:0.75rem;">
+              <template x-for="(msg, idx) in selectedTicket.follow_up_messages" :key="idx">
+                <div :style="msg.role === 'student' ? 'display:flex; justify-content:flex-end;' : 'display:flex; justify-content:flex-start;'">
+                  <div :style="msg.role === 'student' ? 'max-width:80%; padding:0.75rem 1rem; border-radius:1rem; font-size:0.875rem; line-height:1.5; box-shadow:0 1px 2px rgba(0,0,0,0.05); background:#dbeafe; color:#1e3a5f; border-bottom-right-radius:0.25rem;' : 'max-width:80%; padding:0.75rem 1rem; border-radius:1rem; font-size:0.875rem; line-height:1.5; box-shadow:0 1px 2px rgba(0,0,0,0.05); background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; border-bottom-left-radius:0.25rem;'">
+                    <div x-text="msg.content"></div>
+                    <div style="font-size:0.7rem; margin-top:0.375rem; opacity:0.8;" x-text="formatDate(msg.timestamp)"></div>
+                  </div>
+                </div>
+              </template>
+              
+              <!-- 답변 대기중 표시 (마지막 메시지가 학생 메시지인 경우) -->
+              <div x-show="selectedTicket.follow_up_messages?.length > 0 && selectedTicket.follow_up_messages[selectedTicket.follow_up_messages.length - 1]?.role === 'student'" style="display:flex; justify-content:flex-start; align-items:center; gap:0.75rem; margin-top:0.5rem; padding:0.875rem 1rem; background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border:1px solid #fcd34d; border-radius:0.75rem;">
+                <div style="width:36px; height:36px; background:#fbbf24; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0;">⏳</div>
+                <div>
+                  <div style="font-size:0.85rem; font-weight:600; color:#92400e;">답변 대기중</div>
+                  <div style="font-size:0.8rem; color:#b45309;">강사님이 확인 후 답변을 남기실 예정입니다</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 추가 질문 입력 (모든 상태에서 가능) -->
+          <div style="padding:1rem 1.5rem; border-top:1px solid #e5e7eb; background:#fafafa; flex-shrink:0;">
+            <div style="margin-bottom:0.75rem;">
+              <span style="font-size:0.75rem; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em;">💬 추가 메시지</span>
+              <p x-show="selectedTicket.status !== 'resolved'" style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">답변 대기 중이지만 추가 메시지를 보낼 수 있습니다</p>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+              <textarea x-model="followUpMessage" placeholder="추가 질문을 입력하세요..." style="flex:1; padding:0.75rem 1rem; border:2px solid #e5e7eb; border-radius:0.75rem; font-size:0.9rem; background:white; resize:vertical; min-height:44px; max-height:120px; font-family:inherit; transition:all 0.2s; outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#e5e7eb';" @keydown.enter.prevent="submitFollowUp()"></textarea>
+              <button @click="submitFollowUp()" :disabled="!followUpMessage.trim()" style="padding:0.75rem 1.25rem; background:linear-gradient(135deg, #3b82f6, #2563eb); color:white; border:none; border-radius:0.75rem; font-size:0.9rem; font-weight:600; cursor:pointer; white-space:nowrap; box-shadow:0 2px 4px rgba(59,130,246,0.3); transition:all 0.2s;" :style="!followUpMessage.trim() ? 'opacity:0.5;cursor:not-allowed;' : ''" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(59,130,246,0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 4px rgba(59,130,246,0.3)';">
+                <span style="display:inline-flex; align-items:center; gap:0.25rem;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                  </svg>
+                  전송
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Scripts - Load Firebase+App module first, then Alpine -->
+  <script>
+    import(`./js/app.js?v=${Date.now()}`).then(() => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js';
+      document.head.appendChild(s);
+    }).catch(err => console.error('App load error:', err));
+  </script>
+<footer style="text-align:center; padding:1.5rem; font-size:0.75rem; color:#9ca3af; border-top:1px solid #e5e7eb; margin-top:auto; background:white;">
+  © 2026 TutorBridge. All Rights Reserved. Developed by Joo Han-tae &amp; Kim Min-gi &amp; Son Jun-hyuk
+</footer>
+</body>
+</html>

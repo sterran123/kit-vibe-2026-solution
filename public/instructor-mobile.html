@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>TutorBridge - 강사 대시보드</title>
+  <script src="js/theme.js"></script>
+  <script src="/js/responsive-switcher.js"></script>
+  <link rel="stylesheet" href="css/dashboard-mobile.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #3b82f6; --primary-dark: #2563eb; --secondary: #8b5cf6; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --text-primary: #111827; --text-secondary: #6b7280; --bg: #f8fafc; --card-bg: #ffffff; --border: #e5e7eb; }
+    body { font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; padding-bottom: 80px; }
+    .mobile-header { background: var(--card-bg); padding: 1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .logo { font-size: 1.25rem; font-weight: 700; color: var(--primary); text-decoration: none; }
+    .logo span { color: var(--text-secondary); font-weight: 400; }
+    .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+    .notification-btn { position: relative; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bg); border: none; cursor: pointer; }
+    .notification-badge { position: absolute; top: 0; right: 0; background: var(--danger); color: white; font-size: 0.625rem; font-weight: 600; min-width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+    .greeting { font-size: 0.875rem; color: var(--text-secondary); }
+    .greeting strong { color: var(--text-primary); font-weight: 600; }
+    .instructor-badge { display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; margin-left: 8px; }
+    .pull-indicator { position: fixed; top: -50px; left: 0; right: 0; text-align: center; padding: 1rem; background: var(--card-bg); transition: top 0.3s ease; z-index: 99; font-size: 0.875rem; color: var(--text-secondary); }
+    .pull-indicator.active { top: 70px; }
+    .content { padding: 1rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--card-bg); border-radius: 12px; padding: 1rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .stat-card.instructor { border-top: 3px solid var(--primary); }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
+    .stat-label { font-size: 0.75rem; color: var(--text-secondary); }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .section-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+    .search-filter { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .search-input { flex: 1; padding: 0.625rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; background: var(--card-bg); }
+    .filter-btn { padding: 0.625rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); font-size: 0.875rem; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+    .course-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .course-card { background: var(--card-bg); border-radius: 0.75rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s; border: 1px solid var(--border); }
+    .course-card:active { transform: scale(0.98); }
+    .course-header { padding: 1rem; display: flex; justify-content: space-between; align-items: flex-start; }
+    .course-icon { width: 48px; height: 48px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; }
+    .course-badge { color: white; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-weight: 500; }
+    .course-info { padding: 0 1rem 1rem; }
+    .course-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.375rem; line-height: 1.3; }
+    .course-desc { font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem; line-height: 1.4; }
+    .course-meta { display: flex; justify-content: space-between; align-items: center; }
+    .course-students { display: flex; align-items: center; gap: 0.25rem; font-size: 0.8125rem; color: var(--text-secondary); }
+    .course-category { font-size: 0.75rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 0.375rem; }
+    .course-students { font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; }
+    .course-status { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-text { font-size: 0.9375rem; margin-bottom: 0.5rem; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 0.5rem 0; z-index: 100; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.375rem 1rem; text-decoration: none; color: var(--text-secondary); font-size: 0.75rem; transition: color 0.2s; }
+    .nav-item.active { color: var(--primary); }
+    .nav-item svg { width: 24px; height: 24px; }
+    .notification-dropdown { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; justify-content: flex-end; }
+    .notification-panel { background: var(--card-bg); width: 100%; max-width: 360px; height: 100%; overflow-y: auto; }
+    .notification-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--border); }
+    .notification-list { padding: 0.5rem; }
+    .notification-item { padding: 1rem; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .notification-title { font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
+    .notification-desc { font-size: 0.8125rem; color: var(--text-secondary); }
+    .notification-time { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
+    .notification-actions { display: flex; gap: 0.5rem; }
+    .notification-actions button { background: none; border: none; color: var(--primary); font-size: 0.875rem; cursor: pointer; }
+    .empty-notifications { text-align: center; padding: 3rem 1rem; color: var(--text-secondary); }
+    .fab-button { position: fixed; right: 1rem; bottom: 96px; width: 60px; height: 60px; border-radius: 9999px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 14px 30px rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 160; }
+    .mobile-modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); display: flex; align-items: flex-end; justify-content: center; z-index: 220; }
+    .mobile-modal-sheet { width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; background: var(--card-bg); border-radius: 20px 20px 0 0; box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.18); }
+    .mobile-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .mobile-modal-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.875rem; }
+    .mobile-modal-footer { padding: 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; background: var(--card-bg); position: sticky; bottom: 0; }
+    .mobile-field { display: flex; flex-direction: column; gap: 0.5rem; }
+    .mobile-field label { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+    .mobile-field input, .mobile-field select, .mobile-field textarea { width: 100%; padding: 0.75rem 0.875rem; border: 1px solid var(--border); border-radius: 12px; font-size: 0.875rem; background: white; color: var(--text-primary); }
+    .mobile-field textarea { min-height: 100px; resize: vertical; }
+    .mobile-inline-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .mobile-secondary-btn { flex: 1; padding: 0.875rem 1rem; border-radius: 12px; border: 1px solid var(--border); background: white; color: var(--text-primary); font-weight: 600; cursor: pointer; }
+    .mobile-primary-btn { flex: 1; padding: 0.875rem 1rem; border-radius: 12px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 700; cursor: pointer; }
+    @media (min-width: 769px) { body { max-width: 480px; margin: 0 auto; } }
+  </style>
+</head>
+<body x-data="instructorMobileApp()" x-init="init()" x-cloak>
+
+  <!-- Pull to Refresh Indicator -->
+  <div class="pull-indicator" :class="{ 'active': isPulling }" x-text="pullText"></div>
+
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <div class="header-top">
+      <a href="instructor.html" class="logo">Tutor<span>Bridge</span></a>
+      <div class="header-actions">
+        <button class="notification-btn" @click="showNotifications = true" aria-label="알림">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="22" height="22">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          </svg>
+          <span x-show="unreadCount > 0" x-text="unreadCount" class="notification-badge"></span>
+        </button>
+        <a href="settings.html" class="notification-btn" aria-label="설정">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="22" height="22">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.645-.869l.212-1.28z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+    <div class="greeting">
+      안녕하세요, <strong x-text="user?.displayName || '강사'"></strong>님!
+      <span class="instructor-badge">강사</span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="content">
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card instructor">
+        <div class="stat-value" x-text="totalCourses">0</div>
+        <div class="stat-label">등록한 강의</div>
+      </div>
+      <div class="stat-card instructor">
+        <div class="stat-value" x-text="totalStudents">0</div>
+        <div class="stat-label">총 수강생</div>
+      </div>
+      <div class="stat-card instructor">
+        <div class="stat-value" x-text="pendingTickets">0</div>
+        <div class="stat-label">미답변 질문</div>
+      </div>
+    </div>
+
+    <!-- My Courses Section -->
+    <div class="section-header">
+      <h2 class="section-title">📚 내 강의 목록</h2>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="search-filter">
+      <input type="text" class="search-input" x-model="searchQuery" placeholder="강의 검색...">
+      <select class="filter-btn" x-model="selectedCategory">
+        <option value="">전체</option>
+        <option value="programming">프로그래밍</option>
+        <option value="design">디자인</option>
+        <option value="marketing">마케팅</option>
+        <option value="business">비즈니스</option>
+        <option value="language">언어</option>
+        <option value="etc">기타</option>
+      </select>
+    </div>
+
+    <!-- Course List -->
+    <div class="course-list">
+      <template x-if="filteredCourses.length === 0">
+        <div class="empty-state">
+          <div class="empty-icon">📚</div>
+          <p class="empty-text">등록된 강의가 없습니다</p>
+          <p class="empty-subtext">새로운 강의를 개설해보세요!</p>
+        </div>
+      </template>
+      
+      <template x-for="course in filteredCourses" :key="course.id">
+        <div class="course-card" @click="goToClassroom(course.id)">
+          <div class="course-header" :style="{ background: 'linear-gradient(135deg, ' + getStatusColor(course.status) + '20, ' + getStatusColor(course.status) + '40)' }">
+            <div class="course-icon" :style="{ background: getStatusColor(course.status) }">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="24" height="24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
+            <span class="course-badge" :style="{ background: getStatusColor(course.status) }" x-text="getStatusText(course.status)"></span>
+          </div>
+          <div class="course-info">
+            <h3 class="course-title" x-text="course.title"></h3>
+            <p class="course-desc" x-text="course.description || '강의 설명이 없습니다'"></p>
+            <div class="course-meta">
+              <span class="course-students">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="14" height="14">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a23.848 23.848 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+                <span x-text="course.studentCount + '명 수강중'"></span>
+              </span>
+              <span class="course-category" x-text="course.category"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+
+  <!-- Notification Panel -->
+  <div x-show="showNotifications" class="notification-dropdown" @click.self="showNotifications = false" x-transition x-cloak>
+    <div class="notification-panel">
+      <div class="notification-header">
+        <h3 style="font-size: 1rem; font-weight: 600;">🔔 알림</h3>
+        <div class="notification-actions">
+          <button @click="markAllNotificationsRead()" x-show="notifications.length > 0">모두 읽음</button>
+          <button @click="showNotifications = false" style="color: #6b7280;">닫기</button>
+        </div>
+      </div>
+      <div class="notification-list">
+        <template x-if="notifications.length === 0">
+          <div class="empty-notifications">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔕</div>
+            <p>새로운 알림이 없습니다</p>
+          </div>
+        </template>
+        <template x-for="notification in notifications" :key="notification.id">
+          <div class="notification-item" @click="handleNotificationClick(notification)">
+            <div class="notification-title" x-text="notification.title"></div>
+            <div class="notification-desc" x-text="notification.message"></div>
+            <div class="notification-time" x-text="formatDate(notification.created_at)"></div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab-button" @click="openCourseRequestModal()" aria-label="강의 개설 신청 열기">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="28" height="28">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  </button>
+
+  <div x-show="showCourseRequestModal" class="mobile-modal-overlay" @click.self="closeCourseRequestModal()" x-transition x-cloak>
+    <div class="mobile-modal-sheet" @click.stop>
+      <div class="mobile-modal-header">
+        <div>
+          <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">강의 개설 신청</div>
+          <div style="font-size: 0.8125rem; color: var(--text-secondary); margin-top: 0.25rem;">기존 강사 신청 폼과 동일한 항목으로 제출됩니다.</div>
+        </div>
+        <button @click="closeCourseRequestModal()" style="width: 40px; height: 40px; border: none; background: #f3f4f6; border-radius: 9999px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6b7280;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="mobile-modal-body">
+        <div class="mobile-field">
+          <label>강의 제목 *</label>
+          <input type="text" x-model="courseRequest.title" placeholder="예: Python 기초 프로그래밍">
+        </div>
+
+        <div class="mobile-field">
+          <label>강의 설명 *</label>
+          <textarea x-model="courseRequest.description" placeholder="강의 내용, 목표, 대상 학생 등을 상세히 설명해주세요..."></textarea>
+        </div>
+
+        <div class="mobile-field">
+          <label>강의 카테고리 *</label>
+          <select x-model="courseRequest.category">
+            <option value="">카테고리 선택</option>
+            <option value="programming">프로그래밍</option>
+            <option value="math">수학</option>
+            <option value="science">과학</option>
+            <option value="english">영어</option>
+            <option value="korean">국어</option>
+            <option value="history">역사</option>
+            <option value="art">미술</option>
+            <option value="music">음악</option>
+            <option value="other">기타</option>
+          </select>
+        </div>
+
+        <div class="mobile-field">
+          <label>대상 학년</label>
+          <input type="text" x-model="courseRequest.targetGrade" placeholder="예: 중1~중3, 고등학생, 전체">
+        </div>
+
+        <div class="mobile-field">
+          <label>최대 수강 인원</label>
+          <input type="number" x-model="courseRequest.maxStudents" min="1" max="100" placeholder="예: 20">
+        </div>
+
+        <div class="mobile-inline-grid">
+          <div class="mobile-field">
+            <label>시작일</label>
+            <input type="date" x-model="courseRequest.startDate">
+          </div>
+          <div class="mobile-field">
+            <label>종료일</label>
+            <input type="date" x-model="courseRequest.endDate">
+          </div>
+        </div>
+
+        <div class="mobile-field">
+          <label>강의 일정</label>
+          <input type="text" x-model="courseRequest.schedule" placeholder="예: 매주 화요일, 목요일 19:00~21:00">
+        </div>
+
+        <div class="mobile-field">
+          <label>추가 메모</label>
+          <textarea x-model="courseRequest.notes" placeholder="관리자에게 전달하고 싶은 추가 사항이 있다면 작성해주세요..." style="min-height: 88px;"></textarea>
+        </div>
+      </div>
+
+      <div class="mobile-modal-footer">
+        <button class="mobile-secondary-btn" @click="closeCourseRequestModal()">취소</button>
+        <button class="mobile-primary-btn" @click="submitCourseRequest()" :disabled="!courseRequest.title || !courseRequest.description || !courseRequest.category || isSubmittingCourse" :style="(!courseRequest.title || !courseRequest.description || !courseRequest.category || isSubmittingCourse) ? 'opacity:0.6; cursor:not-allowed;' : ''">
+          <span x-show="!isSubmittingCourse">신청하기</span>
+          <span x-show="isSubmittingCourse">신청 중...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="instructor-mobile.html" class="nav-item active">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+      </svg>
+      <span>홈</span>
+    </a>
+    <a href="community-mobile.html" class="nav-item">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+      </svg>
+      <span>커뮤니티</span>
+    </a>
+    <a href="instructorpage.html" class="nav-item">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+      </svg>
+      <span>마이</span>
+    </a>
+  </nav>
+
+  <script type="module" src="js/instructor-mobile.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>

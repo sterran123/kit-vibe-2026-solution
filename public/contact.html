@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>TutorBridge - 문의하기</title>
+  <!-- Theme/Language Init (must be first) -->
+  <script src="js/theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+  
+  <!-- Firebase Init (Compat Version) -->
+  <script>
+    document.write(`<script src="js/firebase-init-compat.js?v=${Date.now()}"><\/script>`);
+  </script>
+  
+  <!-- Contact App -->
+  <script>
+    document.write(`<script src="js/contact.js?v=${Date.now()}"><\/script>`);
+  </script>
+  
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+  <!-- Dashboard Styles -->
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    [x-cloak] { display: none !important; }
+    .inquiry-card {
+      background: white;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid #e5e7eb;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .inquiry-form input,
+    .inquiry-form textarea,
+    .inquiry-form select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.625rem;
+      font-size: 0.9375rem;
+      transition: all 0.15s;
+      background: white;
+    }
+    .inquiry-form input:focus,
+    .inquiry-form textarea:focus,
+    .inquiry-form select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .inquiry-item {
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+      transition: background-color 0.15s;
+    }
+    .inquiry-item:last-child {
+      border-bottom: none;
+    }
+    .inquiry-item:hover {
+      background: #f9fafb;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-pending { background: #fef3c7; color: #d97706; }
+    .status-answered { background: #d1fae5; color: #059669; }
+    .status-closed { background: #e5e7eb; color: #4b5563; }
+    .answer-box {
+      background: #f0f9ff;
+      border-left: 4px solid #3b82f6;
+      padding: 1rem;
+      margin-top: 0.75rem;
+      border-radius: 0 0.5rem 0.5rem 0;
+    }
+  </style>
+</head>
+<body x-data="contactApp()" x-init="init()" x-cloak>
+
+  <nav class="nav">
+    <div style="display:flex; align-items:center; gap:2rem;">
+      <a href="dashboard.html" class="nav-logo">Tutor<span>Bridge</span></a>
+      <div class="nav-links">
+        <a href="chat.html" class="nav-link">💬 AI 튜터</a>
+        <a href="dashboard.html" class="nav-link">📊 대시보드</a>
+        <a href="community.html" class="nav-link">📋 게시판</a>
+      </div>
+    </div>
+    <div class="nav-right" style="position:relative;">
+      <!-- 알림 버튼 -->
+      <button style="background:none; border:none; cursor:pointer; position:relative;" @click="showNotifications = !showNotifications" aria-label="알림">
+        <svg width="22" height="22" fill="none" stroke="#6b7280" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        <span x-show="unreadCount > 0" x-text="unreadCount" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
+      </button>
+      
+      <!-- Notifications Dropdown -->
+      <div x-show="showNotifications" @click.away="showNotifications = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(400px, calc(100vw - 1rem)); max-height:70vh; overflow-y:auto; background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:1rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-weight:600; font-size:1.125rem;">알림</h3>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button x-show="notifications.length > 0" @click.stop="markAllNotificationsRead()" style="background:none; border:none; cursor:pointer; font-size:0.75rem; color:#2563eb; padding:0.25rem 0.5rem; border-radius:0.375rem; transition:background 0.1s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'">모두 읽음</button>
+            <button style="background:none; border:none; cursor:pointer; padding:0.25rem;" @click="showNotifications = false">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div style="padding:0;">
+          <template x-if="notifications.length === 0">
+            <div style="padding:2rem; text-align:center; color:#9ca3af;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#9ca3af" width="48" height="48" style="margin:0 auto 0.75rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              <p>새로운 알림이 없습니다</p>
+            </div>
+          </template>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div style="padding:1rem; border-bottom:1px solid #e5e7eb; transition:background-color 0.15s;" class="notification-item">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                <span style="font-weight:600; font-size:0.95rem; cursor:pointer; flex:1;" x-text="notification.title" @click="handleNotification(notification)"></span>
+                <div style="display:flex; align-items:center; gap:0.25rem; margin-left:0.5rem; flex-shrink:0;">
+                  <span style="font-size:0.75rem; color:#9ca3af; white-space:nowrap;" x-text="formatDate(notification.created_at)"></span>
+                  <button @click.stop="deleteNotification(notification)" style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; border-radius:4px; line-height:1; transition:color 0.1s;" title="읽음 처리" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p style="font-size:0.875rem; color:#6b7280; line-height:1.5; cursor:pointer;" x-text="notification.message" @click="handleNotification(notification)"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+      
+      <!-- 프로필 버튼 -->
+      <div @click="showProfileDropdown = !showProfileDropdown" style="cursor:pointer; width:36px; height:36px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+        <img x-show="photoURL" :src="photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+        <div x-show="!photoURL" class="nav-avatar" x-text="userInitials" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.875rem;"></div>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div x-show="showProfileDropdown" @click.away="showProfileDropdown = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(200px, calc(100vw - 1rem)); background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:0.5rem;">
+          <a href="mypage.html" style="display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; text-decoration:none; color:#374151; font-size:0.875rem; transition:all 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span>�</span> 마이페이지
+          </a>
+          <a href="settings.html" style="display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; text-decoration:none; color:#374151; font-size:0.875rem; transition:all 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span>⚙️</span> 설정
+          </a>
+          <div style="border-top:1px solid #e5e7eb; margin:0.5rem 0;"></div>
+          <button @click="logout()" style="width:100%; text-align:left; display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; border:none; background:transparent; color:#dc2626; font-size:0.875rem; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+            <span>🚪</span> 로그아웃
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div style="max-width:1200px; margin:0 auto; padding:2rem 1rem;">
+    <div style="display:grid; grid-template-columns:280px 1fr; gap:1.5rem;">
+      
+      <!-- Left Sidebar: Quick Links -->
+      <div style="position:sticky; top:80px; height:fit-content;">
+        <div style="background:#ffffff; border-radius:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.08); border:1px solid #e5e7eb; overflow:hidden; margin-bottom:1rem; padding:0.5rem;">
+          <button onclick="location.href='chat.html'" style="width:100%; text-align:left; padding:0.75rem; border-radius:0.5rem; cursor:pointer; transition:background 0.15s; border:none; background:transparent; display:flex; align-items:center; gap:0.75rem; color:#374151;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span style="width:40px; height:40px; border-radius:0.5rem; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; background:#dbeafe;">💬</span>
+            <div>
+              <div style="font-weight:600; font-size:0.875rem;">AI 튜터와 대화</div>
+              <div style="font-size:0.75rem; color:#6b7280;">질문하고 학습하기</div>
+            </div>
+          </button>
+          <button onclick="location.href='dashboard.html'" style="width:100%; text-align:left; padding:0.75rem; border-radius:0.5rem; cursor:pointer; transition:background 0.15s; border:none; background:transparent; display:flex; align-items:center; gap:0.75rem; color:#374151;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span style="width:40px; height:40px; border-radius:0.5rem; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; background:#dcfce7;">📊</span>
+            <div>
+              <div style="font-weight:600; font-size:0.875rem;">대시보드</div>
+              <div style="font-size:0.75rem; color:#6b7280;">학습 현황 보기</div>
+            </div>
+          </button>
+          <button onclick="location.href='community.html'" style="width:100%; text-align:left; padding:0.75rem; border-radius:0.5rem; cursor:pointer; transition:background 0.15s; border:none; background:transparent; display:flex; align-items:center; gap:0.75rem; color:#374151;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span style="width:40px; height:40px; border-radius:0.5rem; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; background:#fef3c7;">📋</span>
+            <div>
+              <div style="font-weight:600; font-size:0.875rem;">게시판</div>
+              <div style="font-size:0.75rem; color:#6b7280;">커뮤니티 참여</div>
+            </div>
+          </button>
+          <button onclick="location.href='contact.html'" style="width:100%; text-align:left; padding:0.75rem; border-radius:0.5rem; cursor:pointer; transition:background 0.15s; border:none; background:#eff6ff; display:flex; align-items:center; gap:0.75rem; color:#2563eb;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+            <span style="width:40px; height:40px; border-radius:0.5rem; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; background:#dbeafe;">💡</span>
+            <div>
+              <div style="font-weight:600; font-size:0.875rem;">문의하기</div>
+              <div style="font-size:0.75rem; color:#6b7280;">도움 요청하기</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div>
+        <!-- New Inquiry Form -->
+        <div class="inquiry-card">
+          <div class="card-title" style="margin-bottom:1.5rem;">💡 새 문의 작성</div>
+          
+          <form class="inquiry-form" @submit.prevent="submitInquiry()">
+            <!-- Recipient Selection -->
+            <div style="margin-bottom:1rem;">
+              <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">문의 대상</label>
+              <div style="display:flex; gap:1rem; margin-bottom:0.75rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                  <input type="radio" x-model="inquiryType" value="instructor" style="width:auto;">
+                  <span>강사</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                  <input type="radio" x-model="inquiryType" value="admin" style="width:auto;">
+                  <span>관리자</span>
+                </label>
+              </div>
+              
+              <!-- Instructor Dropdown -->
+              <div x-show="inquiryType === 'instructor'" style="margin-top:0.75rem;">
+                <select x-model="selectedInstructor" :required="inquiryType === 'instructor'" :disabled="inquiryType !== 'instructor'" style="width:100%; padding:0.75rem 1rem; border:2px solid #e5e7eb; border-radius:0.625rem; font-size:0.9375rem;">
+                  <option value="">강사를 선택해주세요</option>
+                  <template x-for="instructor in instructors" :key="instructor.id">
+                    <option :value="instructor.id" x-text="instructor.name + ' (' + instructor.email + ')'"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+
+            <!-- Title -->
+            <div style="margin-bottom:1rem;">
+              <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">제목</label>
+              <input type="text" x-model="inquiryTitle" placeholder="문의 제목을 입력해주세요" required maxlength="100">
+            </div>
+
+            <!-- Content -->
+            <div style="margin-bottom:1.5rem;">
+              <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">내용</label>
+              <textarea x-model="inquiryContent" placeholder="문의 내용을 자세히 작성해주세요" required rows="6" maxlength="2000" style="resize:vertical;"></textarea>
+              <div style="text-align:right; font-size:0.75rem; color:#6b7280; margin-top:0.25rem;" x-text="inquiryContent.length + '/2000'"></div>
+            </div>
+
+            <!-- File Attachment -->
+            <div style="margin-bottom:1.5rem;">
+              <label style="display:block; font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">첨부파일 (선택사항)</label>
+              <div style="border:2px dashed #d1d5db; border-radius:0.5rem; padding:1rem; text-align:center; cursor:pointer;" @click="$refs.fileInput.click()">
+                <input type="file" x-ref="fileInput" @change="handleFileSelect($event)" style="display:none;" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                <div x-show="!attachmentFile" style="color:#6b7280;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:2rem; height:2rem; margin:0 auto 0.5rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                  </svg>
+                  <p style="font-size:0.875rem;">클릭하여 파일 업로드</p>
+                  <p style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">JPG, PNG, PDF, DOC (최대 5MB)</p>
+                </div>
+                <div x-show="attachmentFile" style="display:flex; align-items:center; gap:0.5rem; justify-content:center;">
+                  <span style="font-size:0.875rem;" x-text="attachmentFile ? attachmentFile.name : ''"></span>
+                  <span style="font-size:0.75rem; color:#6b7280;" x-text="attachmentFile ? (attachmentFile.size / 1024 / 1024).toFixed(2) + ' MB' : ''"></span>
+                  <button type="button" @click.stop="removeAttachment()" style="padding:0.25rem 0.5rem; background:#ef4444; color:white; border:none; border-radius:0.25rem; font-size:0.75rem;">삭제</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" :disabled="isSubmitting || (inquiryType === 'instructor' && !selectedInstructor)" style="width:100%; padding:0.875rem; background:linear-gradient(135deg, #3b82f6, #2563eb); color:white; border:none; border-radius:0.625rem; font-weight:600; font-size:1rem; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'" :style="isSubmitting || (inquiryType === 'instructor' && !selectedInstructor) ? 'opacity:0.6; cursor:not-allowed;' : ''">
+              <span x-show="!isSubmitting">문의 보내기</span>
+              <span x-show="isSubmitting">전송 중...</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- My Inquiries List -->
+        <div class="inquiry-card">
+          <div class="card-title" style="margin-bottom:1rem;">📋 내 문의 내역</div>
+          
+          <div x-show="myInquiries.length === 0" style="text-align:center; padding:2rem; color:#9ca3af;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#9ca3af" width="48" height="48" style="margin:0 auto 0.75rem;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.976 5.976 0 01-.474-2.362c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+            </svg>
+            <p>아직 문의 내역이 없습니다</p>
+          </div>
+
+          <div x-show="myInquiries.length > 0">
+            <template x-for="inquiry in myInquiries" :key="inquiry.id">
+              <div class="inquiry-item">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                      <span :class="'status-badge ' + getInquiryStatusClass(inquiry.status)" x-text="getInquiryStatusText(inquiry.status)"></span>
+                      <span style="font-size:0.75rem; color:#6b7280;" x-text="formatDate(inquiry.createdAt)"></span>
+                      <span style="font-size:0.75rem; color:#9ca3af;">→</span>
+                      <span style="font-size:0.75rem; color:#6b7280;" x-text="inquiry.recipientName || (inquiry.recipientType === 'admin' ? '관리자' : '강사')"></span>
+                    </div>
+                    <h4 style="font-weight:600; font-size:1rem; color:#1f2937; margin-bottom:0.5rem;" x-text="inquiry.title"></h4>
+                    <p style="font-size:0.875rem; color:#4b5563; line-height:1.5; white-space:pre-wrap;" x-text="inquiry.content"></p>
+                  </div>
+                </div>
+                
+                <!-- Answer Section -->
+                <div x-show="inquiry.answer" class="answer-box">
+                  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                    <span style="font-weight:600; font-size:0.875rem; color:#2563eb;">💬 답변</span>
+                    <span style="font-size:0.75rem; color:#6b7280;" x-text="formatDate(inquiry.answeredAt)"></span>
+                  </div>
+                  <p style="font-size:0.875rem; color:#374151; line-height:1.5; white-space:pre-wrap;" x-text="inquiry.answer"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer style="background:#f9fafb; border-top:1px solid #e5e7eb; padding:2rem 1rem; margin-top:3rem;">
+    <div style="max-width:1200px; margin:0 auto; text-align:center;">
+      <p style="color:#6b7280; font-size:0.875rem;">© 2024 TutorBridge. All Rights Reserved.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

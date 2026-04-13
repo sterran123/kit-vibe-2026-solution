@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TutorBridge - 게시글</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script src="js/theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/ko.js"></script>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+  <link rel="stylesheet" href="css/dashboard.css">
+  <style>
+    .comment-item { border-bottom: 1px solid #e5e7eb; padding: 1rem 0; }
+    .comment-item:last-child { border-bottom: none; }
+    .reply-item { margin-left: 2rem; padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body x-data="postDetailApp()" x-cloak>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div style="display:flex; align-items:center; gap:2rem;">
+      <a href="dashboard.html" class="nav-logo">Tutor<span>Bridge</span></a>
+      <div class="nav-links">
+        <a href="chat.html" class="nav-link" x-show="userRole && !['instructor','admin','staff'].includes(userRole)">💬 AI 튜터</a>
+        <a href="dashboard.html" class="nav-link">📊 대시보드</a>
+        <a href="community.html" class="nav-link active">📋 게시판</a>
+      </div>
+    </div>
+    
+    <div style="display:flex; gap:1rem; align-items:center; position:relative;">
+      <!-- 알림 버튼 -->
+      <button style="background:none; border:none; cursor:pointer; position:relative;" @click="showNotifications = !showNotifications">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="22" height="22">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+        </svg>
+        <span x-show="unreadCount > 0" x-text="unreadCount" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
+      </button>
+      
+      <!-- Notifications Dropdown -->
+      <div x-show="showNotifications" @click.away="showNotifications = false" x-transition style="position:fixed; top:60px; right:0.5rem; margin-top:0; width:min(400px, calc(100vw - 1rem)); max-height:70vh; overflow-y:auto; background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:1rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-weight:600; font-size:1.125rem;">알림</h3>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button x-show="notifications.length > 0" @click.stop="markAllNotificationsRead()" style="background:none; border:none; cursor:pointer; font-size:0.75rem; color:#2563eb; padding:0.25rem 0.5rem; border-radius:0.375rem; transition:background 0.1s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'">모두 읽음</button>
+            <button style="background:none; border:none; cursor:pointer; padding:0.25rem;" @click="showNotifications = false">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div style="max-height:calc(70vh - 60px); overflow-y:auto;">
+          <div x-show="notifications.length === 0" style="padding:2rem; text-align:center; color:#9ca3af;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#d1d5db" width="48" height="48" style="margin:0 auto 0.75rem;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            <p style="font-size:0.875rem;">새로운 알림이 없습니다</p>
+          </div>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div style="padding:1rem; border-bottom:1px solid #e5e7eb; transition:background-color 0.15s;" class="notification-item">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                <span style="font-weight:600; font-size:0.95rem; cursor:pointer; flex:1;" x-text="notification.title" @click="handleNotificationClick(notification); showNotifications = false;"></span>
+                <div style="display:flex; align-items:center; gap:0.25rem; margin-left:0.5rem; flex-shrink:0;">
+                  <span style="font-size:0.75rem; color:#9ca3af; white-space:nowrap;" x-text="formatDate(notification.created_at)"></span>
+                  <button @click.stop="deleteNotification(notification)" style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; border-radius:4px; line-height:1; transition:color 0.1s;" title="읽음 처리" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p style="font-size:0.875rem; color:#6b7280; line-height:1.5; cursor:pointer;" x-text="notification.message" @click="handleNotificationClick(notification); showNotifications = false;"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+      
+      <!-- 프로필 버튼 -->
+      <div @click="showProfileDropdown = !showProfileDropdown" style="cursor:pointer; width:36px; height:36px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;" aria-label="프로필">
+        <img x-show="photoURL" :src="photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+        <div x-show="!photoURL" class="nav-avatar" x-text="userInitials" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.875rem;"></div>
+      </div>
+      
+      <!-- Profile Dropdown -->
+      <div x-show="showProfileDropdown" @click.away="showProfileDropdown = false" x-transition style="position:fixed; top:60px; right:0.5rem; margin-top:0; width:min(200px, calc(100vw - 1rem)); background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:0.5rem;">
+          <a href="#" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none; border-radius:0.5rem; transition:background 0.1s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'" onclick="const role=localStorage.getItem('userRole'); location.href=(role==='instructor'||role==='admin'||role==='staff')?'instructorpage.html':'mypage.html'; return false;">👤 마이페이지</a>
+          <a href="settings.html" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none; border-radius:0.5rem; transition:background 0.1s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">⚙️ 설정</a>
+          <hr style="margin:0.25rem 0; border:none; border-top:1px solid #e5e7eb;">
+          <button @click="logout(); showProfileDropdown = false" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#dc2626; display:flex; align-items:center; gap:0.5rem; background:none; border:none; cursor:pointer; border-radius:0.5rem; transition:background 0.1s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">🚪 로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="max-width: 1000px; margin: 0 auto; padding: 1.5rem 1rem;">
+    
+    <!-- Breadcrumb -->
+    <div style="margin-bottom:1rem; font-size:0.875rem; color:#6b7280;">
+      <a href="community.html" style="color:#2563eb;">📋 게시판</a>
+      <span style="margin:0 0.5rem;">/</span>
+      <span x-text="post.isAnnouncement ? '공지사항' : (post.category || '일반')"></span>
+    </div>
+
+    <!-- Post Content -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div style="padding:1.5rem; border-bottom:1px solid #e5e7eb;">
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:1rem;">
+          <div>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+              <span x-show="post.isImportant || post.isAnnouncement" style="padding:0.25rem 0.75rem; background:#ef4444; color:white; font-size:0.75rem; font-weight:600; border-radius:9999px;">공지</span>
+              <span x-show="post.category && !post.isAnnouncement" style="padding:0.25rem 0.75rem; background:#3b82f6; color:white; font-size:0.75rem; font-weight:600; border-radius:9999px;" x-text="post.category"></span>
+            </div>
+            <h1 style="font-size:1.5rem; font-weight:700; color:#1f2937;" x-text="post.title"></h1>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button x-show="canEditPost()" @click="openEditModal()" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </button>
+            <button x-show="canDeletePost()" @click="deletePost()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem; font-size:0.875rem; color:#6b7280;">
+          <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #2563eb, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.875rem;" x-text="getInitials(post.authorName || '익명')"></div>
+          <span x-text="post.authorName || '익명'"></span>
+          <span style="color:#d1d5db;">|</span>
+          <span x-text="formatDate(post.createdAt)"></span>
+          <span x-show="post.viewCount" style="margin-left:auto;">👁 <span x-text="post.viewCount"></span></span>
+        </div>
+      </div>
+      <div style="padding:1.5rem; min-height:200px;" class="prose prose-sm max-w-none" x-html="post.content"></div>
+    </div>
+
+    <!-- Comments Section -->
+    <div class="card">
+      <div style="padding:1rem 1.5rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-weight:600; font-size:1.125rem; color:#1f2937;">💬 댓글 <span x-text="comments.length"></span></h3>
+      </div>
+      
+      <div style="padding:1.5rem;">
+        <!-- Comment Input -->
+        <div style="margin-bottom:1.5rem;">
+          <textarea x-model="newComment" placeholder="댓글을 입력하세요..." rows="3" style="width:100%; padding:0.75rem; border:1px solid #e5e7eb; border-radius:0.5rem; resize:vertical; font-size:0.875rem;"></textarea>
+          <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
+            <button @click="addComment()" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">댓글 등록</button>
+          </div>
+        </div>
+
+        <!-- Comments List -->
+        <div>
+          <template x-for="comment in comments" :key="comment.id">
+            <div class="comment-item">
+              <div style="display:flex; justify-content:space-between; align-items:start;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                  <div style="width:32px; height:32px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                    <img x-show="comment.photoURL" :src="comment.photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+                    <div x-show="!comment.photoURL" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.875rem;" x-text="getInitials(comment.authorName || '익명')"></div>
+                  </div>
+                  <div>
+                    <div style="font-weight:500; color:#374151;" x-text="comment.authorName || '익명'"></div>
+                    <div style="font-size:0.75rem; color:#9ca3af;" x-text="formatDate(comment.createdAt)"></div>
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.5rem;">
+                  <button @click="replyToComment(comment)" style="font-size:0.75rem; color:#6b7280;" onmouseover="this.style.color='#2563eb'" onmouseout="this.style.color='#6b7280'">답글</button>
+                  <button x-show="canDeleteComment(comment)" @click="deleteComment(comment.id)" style="font-size:0.75rem; color:#9ca3af;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#9ca3af'">삭제</button>
+                </div>
+              </div>
+              <p style="margin-top:0.75rem; color:#4b5563;" x-text="comment.content"></p>
+
+              <!-- Replies -->
+              <template x-for="reply in comment.replies || []" :key="reply.id">
+                <div class="reply-item">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <div style="width:24px; height:24px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                        <img x-show="reply.photoURL" :src="reply.photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+                        <div x-show="!reply.photoURL" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.625rem;" x-text="getInitials(reply.authorName || '익명')"></div>
+                      </div>
+                      <span style="font-size:0.875rem; font-weight:500; color:#374151;" x-text="reply.authorName || '익명'"></span>
+                      <span style="font-size:0.75rem; color:#9ca3af;" x-text="formatDate(reply.createdAt)"></span>
+                    </div>
+                    <button x-show="canDeleteComment(reply)" @click="deleteReply(comment.id, reply.id)" style="font-size:0.75rem; color:#9ca3af;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#9ca3af'">삭제</button>
+                  </div>
+                  <p style="font-size:0.875rem; color:#4b5563;" x-text="reply.content"></p>
+                </div>
+              </template>
+
+              <!-- Reply Input -->
+              <div x-show="replyingTo === comment.id" style="margin-top:1rem; margin-left:2rem;">
+                <textarea x-model="replyContent" placeholder="답글을 입력하세요..." rows="2" style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:0.375rem; resize:vertical; font-size:0.875rem;"></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+                  <button @click="cancelReply()" style="padding:0.375rem 0.75rem; border:1px solid #e5e7eb; border-radius:0.375rem; font-size:0.875rem; color:#6b7280;">취소</button>
+                  <button @click="addReply(comment.id)" style="padding:0.375rem 0.75rem; background:#2563eb; color:white; border-radius:0.375rem; font-size:0.875rem;">답글 등록</button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div x-show="comments.length === 0" style="text-align:center; padding:2rem; color:#9ca3af;">
+            첫 댓글을 작성해보세요!
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div x-show="showEditModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" @click.self="showEditModal = false">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full" @click.stop>
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-lg font-semibold">✏️ 게시글 수정</h3>
+        <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">제목</label>
+          <input x-model="editForm.title" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">내용</label>
+          <div id="edit-editor" style="min-height: 200px; border: 1px solid #e5e7eb; border-radius: 0.5rem;"></div>
+        </div>
+      </div>
+      <div class="p-4 border-t flex gap-3">
+        <button @click="showEditModal = false" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">취소</button>
+        <button @click="updatePost()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">수정하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import(`./js/community-post.js?v=${Date.now()}`).then(() => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js';
+      s.defer = true;
+      document.head.appendChild(s);
+    }).catch(err => console.error('Post detail app load error:', err));
+  </script>
+
+<footer style="text-align:center; padding:1.5rem; font-size:0.75rem; color:#9ca3af; border-top:1px solid #e5e7eb; margin-top:auto; background:white;">
+  © 2026 TutorBridge. All Rights Reserved.
+</footer>
+</body>
+</html>

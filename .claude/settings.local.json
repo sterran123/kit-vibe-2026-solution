@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(firebase deploy:*)",
+      "Bash(google-chrome --headless --disable-gpu --dump-dom \"https://the-unemployed-trio.web.app/instructor.html\")",
+      "Bash(google-chrome --headless --disable-gpu --dump-dom \"https://the-unemployed-trio.web.app/classroom.html\")",
+      "Bash(google-chrome --headless --disable-gpu --dump-dom \"https://the-unemployed-trio.web.app/classroom.html?courseId=test\")",
+      "Bash(google-chrome --headless --disable-gpu --enable-logging --v=1 \"https://the-unemployed-trio.web.app/classroom.html?courseId=test\")",
+      "Bash(xargs ls:*)",
+      "Bash(ls -lt \"/home/irisbot-12/바탕화면/공모전 출품작/public/\"*.html \"/home/irisbot-12/바탕화면/공모전 출품작/public/js/\"*.js)"
+    ]
+  }
+}

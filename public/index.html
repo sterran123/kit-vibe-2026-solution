@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>TutorBridge - AI-powered Learning Platform</title>
+  <meta name="description" content="TutorBridge는 AI 튜터와 강사를 연결하여 개인화된 학습 경험을 제공하는 플랫폼입니다.">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      font-family: 'Inter', 'Noto Sans KR', sans-serif;
+    }
+    
+    .hero-gradient {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .floating-animation {
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+  </style>
+</head>
+<body class="antialiased text-gray-900" x-data="{ activeTab: 'home' }">
+  
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <span class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent cursor-pointer" @click="activeTab = 'home'">
+            Tutor<span class="font-extrabold">Bridge</span>
+          </span>
+        </div>
+        <div class="hidden md:flex items-center space-x-1">
+          <button @click="activeTab = 'home'" :class="activeTab === 'home' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'" class="font-medium px-4 py-2 rounded-lg transition-all">홈</button>
+          <button @click="activeTab = 'features'" :class="activeTab === 'features' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'" class="font-medium px-4 py-2 rounded-lg transition-all">기능</button>
+          <button @click="activeTab = 'howto'" :class="activeTab === 'howto' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'" class="font-medium px-4 py-2 rounded-lg transition-all">사용 방법</button>
+          <button @click="activeTab = 'instructor'" :class="activeTab === 'instructor' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'" class="font-medium px-4 py-2 rounded-lg transition-all">강사 안내</button>
+        </div>
+        <div class="flex items-center space-x-4">
+          <a href="login.html?role=student" class="text-gray-600 hover:text-indigo-600 font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-all">
+            학생 로그인
+          </a>
+          <a href="login.html?role=instructor" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:shadow-lg transition-all">
+            강사 로그인
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section x-show="activeTab === 'home'" class="hero-gradient min-h-screen flex items-center pt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="text-white">
+          <h1 class="text-5xl lg:text-6xl font-bold leading-tight mb-6">
+            AI와 강사가 함께하는<br>
+            <span class="text-yellow-300">스마트 학습</span>
+          </h1>
+          <p class="text-xl text-white/90 mb-8 leading-relaxed">
+            TutorBridge는 AI 튜터의 즉각적인 피드백과<br>
+            전문 강사의 심층 가이드를 연결합니다.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a href="login.html?role=student" class="btn-primary inline-flex items-center justify-center px-8 py-4 rounded-xl text-white font-bold text-lg">
+              학생으로 시작하기
+            </a>
+            <a href="login.html?role=instructor" class="inline-flex items-center justify-center px-8 py-4 rounded-xl border-2 border-white text-white font-bold text-lg hover:bg-white hover:text-indigo-600 transition-all">
+              강사로 참여하기
+            </a>
+          </div>
+        </div>
+        <div class="hidden lg:block floating-animation">
+          <div class="bg-white rounded-2xl shadow-2xl p-6">
+            <div class="space-y-4">
+              <div class="flex items-start space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">AI</div>
+                <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3 max-w-xs">
+                  <p class="text-gray-700 text-sm">안녕하세요! 무엇을 도와드릴까요?</p>
+                </div>
+              </div>
+              <div class="flex items-start space-x-3 justify-end">
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-none px-4 py-3 max-w-xs">
+                  <p class="text-sm">Python 리스트 컴프리헨션 설명해줘</p>
+                </div>
+              </div>
+              <div class="flex items-start space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">AI</div>
+                <div class="bg-gray-100 rounded-2xl rounded-tl-none px-4 py-3 max-w-sm">
+                  <p class="text-gray-700 text-sm">Python 리스트 컴프리헨션은 간결하게 리스트를 생성하는 방법입니다!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section x-show="activeTab === 'home'" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div>
+          <div class="text-4xl font-bold text-indigo-600 mb-2">10,000+</div>
+          <div class="text-gray-600">활성 학생</div>
+        </div>
+        <div>
+          <div class="text-4xl font-bold text-purple-600 mb-2">500+</div>
+          <div class="text-gray-600">전문 강사</div>
+        </div>
+        <div>
+          <div class="text-4xl font-bold text-pink-600 mb-2">50,000+</div>
+          <div class="text-gray-600">해결된 질문</div>
+        </div>
+        <div>
+          <div class="text-4xl font-bold text-blue-600 mb-2">98%</div>
+          <div class="text-gray-600">만족도</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section x-show="activeTab === 'home' || activeTab === 'features'" id="features" class="py-20 bg-gray-50" :class="{ 'pt-24': activeTab === 'features' }">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold text-gray-900 mb-4">왜 TutorBridge인가?</h2>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+          AI와 인간 강사의 장점을 결합하여 가장 효과적인 학습 경험을 제공합니다.
+        </p>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+          <div class="w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">즉각적인 AI 피드백</h3>
+          <p class="text-gray-600 leading-relaxed">
+            Gemini AI가 실시간으로 질문에 답변합니다. 24/7 언제든지 학습하세요.
+          </p>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+          <div class="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">전문 강사 연결</h3>
+          <p class="text-gray-600 leading-relaxed">
+            AI로 해결되지 않는 심층 질문은 전문 강사에게 바로 연결됩니다.
+          </p>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+          <div class="w-14 h-14 bg-pink-100 rounded-xl flex items-center justify-center mb-6">
+            <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">개인화된 학습</h3>
+          <p class="text-gray-600 leading-relaxed">
+            대화 맥락을 기억하는 AI가 개인별 학습 스타일에 맞춰 설명합니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it Works -->
+  <section x-show="activeTab === 'home' || activeTab === 'howto'" id="how-it-works" class="py-20 bg-white" :class="{ 'pt-24': activeTab === 'howto' }">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold text-gray-900 mb-4">사용 방법</h2>
+        <p class="text-xl text-gray-600">3단계로 시작하는 스마트 학습</p>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="text-center">
+          <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-6 shadow-lg">
+            1
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">질문하기</h3>
+          <p class="text-gray-600">AI 튜터에게 궁금한 것을 자유롭게 질문하세요.</p>
+        </div>
+        
+        <div class="text-center">
+          <div class="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-6 shadow-lg">
+            2
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">AI 답변 확인</h3>
+          <p class="text-gray-600">실시간 스트리밍으로 답변이 도착합니다.</p>
+        </div>
+        
+        <div class="text-center">
+          <div class="w-20 h-20 bg-gradient-to-br from-pink-500 to-red-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-6 shadow-lg">
+            3
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">강사 연결 (선택)</h3>
+          <p class="text-gray-600">추가 설명이 필요하면 강사에게 질문하세요.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- For Instructors -->
+  <section x-show="activeTab === 'home' || activeTab === 'instructor'" id="for-instructors" class="py-20 bg-gradient-to-br from-indigo-600 to-purple-700 text-white" :class="{ 'pt-24': activeTab === 'instructor' }">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <h2 class="text-4xl font-bold mb-6">강사님을 위한 TutorBridge</h2>
+          <p class="text-xl text-white/90 mb-8">
+            AI가 기본적인 질문을 처리하여 강사님은 심층적인 가이드에 집중할 수 있습니다.
+          </p>
+          <ul class="space-y-4 mb-8">
+            <li class="flex items-center">
+              <svg class="w-6 h-6 mr-3 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>학생의 AI 대화 맥락 확인</span>
+            </li>
+            <li class="flex items-center">
+              <svg class="w-6 h-6 mr-3 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>실시간 알림으로 즉각 대응</span>
+            </li>
+            <li class="flex items-center">
+              <svg class="w-6 h-6 mr-3 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>체계적인 티켓 관리 시스템</span>
+            </li>
+          </ul>
+          <a href="login.html?role=instructor" class="inline-flex items-center px-8 py-4 bg-white text-indigo-700 font-bold rounded-xl hover:bg-gray-100 transition-all shadow-lg">
+            강사로 시작하기
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid md:grid-cols-4 gap-8">
+        <div>
+          <div class="text-2xl font-bold mb-4">
+            Tutor<span class="text-indigo-400">Bridge</span>
+          </div>
+          <p class="text-gray-400 text-sm">
+            AI와 인간 강사의 장점을 결합한 차세대 학습 플랫폼
+          </p>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4">학생</h4>
+          <ul class="space-y-2 text-gray-400 text-sm">
+            <li><a href="login.html?role=student" class="hover:text-white transition-colors">로그인</a></li>
+            <li><a href="#features" class="hover:text-white transition-colors">기능 소개</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold mb-4">강사</h4>
+          <ul class="space-y-2 text-gray-400 text-sm">
+            <li><a href="login.html?role=instructor" class="hover:text-white transition-colors">강사 로그인</a></li>
+            <li><a href="#for-instructors" class="hover:text-white transition-colors">강사 안내</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
+        © 2026 TutorBridge. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+<footer style="text-align:center; padding:1.5rem; font-size:0.75rem; color:#9ca3af; border-top:1px solid #e5e7eb; margin-top:auto; background:white;">
+  © 2026 TutorBridge. All Rights Reserved. Developed by Joo Han-tae &amp; Kim Min-gi &amp; Son Jun-hyuk
+</footer>
+</body>
+</html>

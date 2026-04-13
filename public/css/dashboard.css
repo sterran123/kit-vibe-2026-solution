@@ -1,0 +1,173 @@
+/* ============================================
+   TutorBridge Dashboard Styles
+   ============================================ */
+
+/* Alpine.js cloak */
+[x-cloak] { display: none !important; }
+
+/* Notification & Dropdown utilities */
+.notification-item:hover { background-color: #f9fafb; }
+.dropdown-item { background: none; border: none; cursor: pointer; border-radius: 0.5rem; transition: background 0.1s; }
+.dropdown-item:hover { background: #f3f4f6 !important; }
+.dropdown-item-danger { background: none; border: none; cursor: pointer; border-radius: 0.5rem; transition: background 0.1s; }
+.dropdown-item-danger:hover { background: #fee2e2 !important; }
+
+/* Reset & Base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; background: #f8fafc; }
+
+/* ============================================
+   Navigation
+   ============================================ */
+.nav { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+.nav-logo { font-size: 1.25rem; font-weight: 700; color: #111827; text-decoration: none; }
+.nav-logo span { color: #2563eb; }
+.nav-links { display: flex; gap: 1.5rem; align-items: center; }
+.nav-link { color: #6b7280; text-decoration: none; font-size: 0.875rem; font-weight: 500; padding: 0.5rem 0; border-bottom: 2px solid transparent; transition: all 0.15s; position: relative; }
+.nav-link:hover, .nav-link.active { color: #2563eb; border-bottom-color: #2563eb; text-decoration: none; }
+.nav-right { display: flex; align-items: center; gap: 1rem; }
+.nav-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem; cursor: pointer; }
+
+/* ============================================
+   Layout
+   ============================================ */
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.greeting { margin-bottom: 2rem; }
+.greeting h1 { font-size: 1.75rem; font-weight: 700; color: #111827; }
+.greeting p { color: #6b7280; margin-top: 0.25rem; }
+.grid-2 { display: grid; grid-template-columns: 280px 1fr 340px; gap: 1.5rem; }
+
+@media (max-width: 1200px) {
+  .grid-2 { grid-template-columns: 1fr 340px; }
+  .left-sidebar { display: none; }
+}
+
+@media (max-width: 768px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+   Top Courses (Ranking)
+   ============================================ */
+.top-course-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.15s; }
+.top-course-item:hover { background: #f3f4f6; transform: translateX(4px); }
+.top-rank { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0; }
+.rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #fff; }
+.rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #fff; }
+.rank-3 { background: linear-gradient(135deg, #cd7f32, #b87333); color: #fff; }
+.top-course-info { flex: 1; min-width: 0; }
+.top-course-title { font-weight: 600; font-size: 0.875rem; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-course-meta { font-size: 0.75rem; color: #6b7280; }
+
+/* ============================================
+   Cards
+   ============================================ */
+.card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.card-title { font-size: 1.125rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
+
+/* ============================================
+   Course Grid & Cards
+   ============================================ */
+.course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.course-card { border: 1px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden; transition: all 0.15s; cursor: pointer; }
+.course-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+.course-thumb { height: 120px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+.course-info { padding: 1rem; }
+.course-tag { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.course-name { font-weight: 600; font-size: 0.9rem; margin-top: 0.25rem; color: #111827; }
+
+/* ============================================
+   Progress Bar
+   ============================================ */
+.progress-bar { margin-top: 0.75rem; background: #e5e7eb; border-radius: 9999px; height: 6px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 9999px; transition: width 0.3s; }
+.progress-meta { display: flex; justify-content: space-between; margin-top: 0.25rem; font-size: 0.75rem; color: #6b7280; }
+
+/* ============================================
+   Stats & Quick Actions
+   ============================================ */
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6; }
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: #6b7280; font-size: 0.875rem; }
+.stat-value { font-weight: 700; color: #111827; }
+
+.quick-action { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; cursor: pointer; transition: background 0.15s; text-decoration: none; color: #374151; }
+.quick-action:hover { background: #f3f4f6; }
+.quick-icon { width: 40px; height: 40px; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
+
+/* ============================================
+   Notices
+   ============================================ */
+.notice-item { padding: 0.625rem 0; border-bottom: 1px solid #f3f4f6; }
+.notice-item:last-child { border-bottom: none; }
+.notice-dot { width: 6px; height: 6px; border-radius: 50%; background: #2563eb; display: inline-block; margin-right: 0.5rem; }
+
+/* ============================================
+   Bottom Tab Bar (Mobile)
+   ============================================ */
+.bottom-tab-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; z-index: 100; height: 60px; }
+.bottom-tab-bar a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: #6b7280; font-size: 0.65rem; font-weight: 500; padding: 0.5rem 0; transition: color 0.15s; }
+.bottom-tab-bar a.active, .bottom-tab-bar a:hover { color: #2563eb; }
+.bottom-tab-bar a svg { width: 22px; height: 22px; }
+
+/* ============================================
+   Pagination
+   ============================================ */
+.pagination { display: flex; justify-content: center; align-items: center; gap: 0.25rem; margin-top: 1.25rem; }
+.page-btn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #e5e7eb; border-radius: 0.5rem;
+  background: white; color: #6b7280;
+  font-size: 0.875rem; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  text-decoration: none;
+}
+.page-btn:hover { background: #f3f4f6; border-color: #d1d5db; color: #374151; }
+.page-btn.active { background: #111827; border-color: #111827; color: white; font-weight: 600; }
+.page-btn:disabled, .page-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.page-btn.arrow { color: #9ca3af; }
+.page-info { text-align: center; font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem; }
+
+/* ============================================
+   Mobile Responsive
+   ============================================ */
+@media (max-width: 768px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .container { padding: 1rem; padding-bottom: 80px; }
+  .bottom-tab-bar { display: flex; }
+  .course-grid { grid-template-columns: 1fr 1fr !important; }
+  .greeting h1 { font-size: 1.3rem; }
+  /* 수강강의/대화 카드: 모바일에서 가로 스크롤 */
+  .card-row-scroll { display: flex; flex-direction: row; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .card-row-scroll::-webkit-scrollbar { height: 3px; }
+  .card-row-scroll::-webkit-scrollbar-track { background: #f3f4f6; }
+  .card-row-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 9999px; }
+  .card-row-scroll > * { flex: 0 0 calc(80vw - 2rem); scroll-snap-align: start; }
+  /* 강의 그리드: 모바일 2컬럼 */
+  .courses-grid-mobile { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+@media (max-width: 480px) {
+  .course-grid { grid-template-columns: 1fr !important; }
+  .courses-grid-mobile { grid-template-columns: 1fr !important; }
+  .nav { padding: 0 1rem; }
+  .nav-right { gap: 0.5rem; }
+  .card-row-scroll > * { flex: 0 0 calc(90vw - 2rem); }
+}
+
+/* ============================================
+   Dark Theme
+   ============================================ */
+[data-theme="dark"] body { background: #1a1a2e; color: #e2e8f0; }
+[data-theme="dark"] .nav, [data-theme="dark"] .card { background: #16213e; border-color: #0f3460; }
+[data-theme="dark"] .nav-link, [data-theme="dark"] .stat-label { color: #94a3b8; }
+[data-theme="dark"] .card-title, [data-theme="dark"] .greeting h1 { color: #e2e8f0; }
+[data-theme="dark"] .greeting p { color: #94a3b8; }
+[data-theme="dark"] .course-card { border-color: #0f3460; background: #16213e; }
+[data-theme="dark"] .course-name { color: #e2e8f0; }
+[data-theme="dark"] .stat-value { color: #e2e8f0; }
+[data-theme="dark"] .top-course-item:hover { background: #0f3460; }
+[data-theme="dark"] .top-course-title { color: #e2e8f0; }
+[data-theme="dark"] .top-course-meta { color: #94a3b8; }

@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>TutorBridge - 대시보드</title>
+  <!-- Theme/Language Init (must be first) -->
+  <script src="js/theme.js"></script>
+  <script src="/js/responsive-switcher.js"></script>
+  <!-- Mobile Auto-Redirect -->
+  <script>
+    (function() {
+      // Check User-Agent for mobile devices
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isSmallScreen = window.innerWidth < 768 || window.screen.width < 768;
+      
+      if ((isMobile || isSmallScreen) && !window.location.href.includes('-mobile') && !localStorage.getItem('forceDesktop')) {
+        window.location.replace(window.location.href.replace('dashboard.html', 'dashboard-mobile.html'));
+      }
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Dashboard Styles -->
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body x-data="dashboardApp()" x-cloak>
+
+  <nav class="nav">
+    <div style="display:flex; align-items:center; gap:2rem;">
+      <a href="dashboard.html" class="nav-logo">Tutor<span>Bridge</span></a>
+      <div class="nav-links">
+        <a href="chat.html" class="nav-link">💬 AI 튜터</a>
+        <a href="dashboard.html" class="nav-link active">📊 대시보드</a>
+        <a href="javascript:void(0)" @click="window.location.href = window.innerWidth <= 768 ? 'community-mobile.html' : 'community.html'" class="nav-link">📋 게시판</a>
+      </div>
+    </div>
+    <div class="nav-right" style="position:relative;">
+      <!-- 알림 버튼 -->
+      <button style="background:none; border:none; cursor:pointer; position:relative;" @click="showNotifications = !showNotifications" aria-label="알림">
+        <svg width="22" height="22" fill="none" stroke="#6b7280" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        <span x-show="unreadCount > 0" x-text="unreadCount" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
+      </button>
+      
+      <!-- Notifications Dropdown -->
+      <div x-show="showNotifications" @click.away="showNotifications = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(400px, calc(100vw - 1rem)); max-height:70vh; overflow-y:auto; background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:1rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-weight:600; font-size:1.125rem;">알림</h3>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button x-show="notifications.length > 0" @click.stop="markAllNotificationsRead()" style="background:none; border:none; cursor:pointer; font-size:0.75rem; color:#2563eb; padding:0.25rem 0.5rem; border-radius:0.375rem; transition:background 0.1s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'">모두 읽음</button>
+            <button style="background:none; border:none; cursor:pointer; padding:0.25rem;" @click="showNotifications = false">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div style="padding:0;">
+          <template x-if="notifications.length === 0">
+            <div style="padding:2rem; text-align:center; color:#9ca3af;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#9ca3af" width="48" height="48" style="margin:0 auto 0.75rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              <p>새로운 알림이 없습니다</p>
+            </div>
+          </template>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div style="padding:1rem; border-bottom:1px solid #e5e7eb; transition:background-color 0.15s;" class="notification-item">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                <span style="font-weight:600; font-size:0.95rem; cursor:pointer; flex:1;" x-text="notification.title" @click="handleNotification(notification)"></span>
+                <div style="display:flex; align-items:center; gap:0.25rem; margin-left:0.5rem; flex-shrink:0;">
+                  <span style="font-size:0.75rem; color:#9ca3af; white-space:nowrap;" x-text="formatDate(notification.created_at)"></span>
+                  <button @click.stop="deleteNotification(notification)" style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; border-radius:4px; line-height:1; transition:color 0.1s;" title="읽음 처리" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p style="font-size:0.875rem; color:#6b7280; line-height:1.5; cursor:pointer;" x-text="notification.message" @click="handleNotification(notification)"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+      <!-- 설정 버튼 (AI 채팅방에서만 표시) -->
+      <button x-show="window.location.pathname.includes('chat.html')" style="background:none; border:none; cursor:pointer;" @click="showChatSettingsModal = true" aria-label="채팅 설정">
+        <svg width="22" height="22" fill="none" stroke="#6b7280" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.87l-.212 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.375-.312-.687-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.87l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+      <!-- 프로필 버튼 -->
+      <div @click="showProfileDropdown = !showProfileDropdown" style="cursor:pointer; width:36px; height:36px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;" aria-label="프로필">
+        <img x-show="photoURL" :src="photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+        <div x-show="!photoURL" class="nav-avatar" x-text="userInitials" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.875rem;"></div>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div x-show="showProfileDropdown" @click.away="showProfileDropdown = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(200px, calc(100vw - 1rem)); background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:0.5rem;">
+          <a href="#" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none;" onclick="const r=localStorage.getItem('userRole'); location.href=(r==='instructor'||r==='admin'||r==='staff')?'instructorpage.html':'mypage.html'; return false;">
+            👤 마이페이지
+          </a>
+          <a href="settings.html" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none;">
+            ⚙️ 설정
+          </a>
+          <button @click="Swal.fire({icon:'info',title:'준비 중입니다',text:'문의사항 기능은 준비 중입니다.',confirmButtonColor:'#2563eb'}); showProfileDropdown = false" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; display:none;">
+            💬 문의사항
+          </button>
+          <hr style="margin:0.25rem 0; border:none; border-top:1px solid #e5e7eb;">
+          <button @click="doLogout(); showProfileDropdown = false" class="dropdown-item-danger" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#dc2626; display:flex; align-items:center; gap:0.5rem;">
+            🚪 로그아웃
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Greeting -->
+    <div class="greeting">
+      <h1>안녕하세요, <span x-text="user?.displayName || '학생'"></span>님! 👋</h1>
+      <p>오늘도 목표를 향해 열공해볼까요?</p>
+    </div>
+
+    <div class="grid-2">
+      <!-- Left Sidebar - Top 3 Recommended Courses -->
+      <div class="left-sidebar">
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-title">🏆 인기 강의 TOP 3</div>
+          <template x-if="topCourses.length === 0">
+            <div style="text-align:center; padding:1.5rem; color:#9ca3af;">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">📊</div>
+              <p style="font-size:0.875rem;">아직 순위 데이터가 없습니다</p>
+            </div>
+          </template>
+          <template x-for="(course, index) in topCourses" :key="course.id">
+            <div class="top-course-item" @click="openCourseDetail(course)" style="margin-bottom:0.5rem;">
+              <div class="top-rank" :class="'rank-' + (index + 1)" x-text="index + 1"></div>
+              <div class="top-course-info">
+                <div class="top-course-title" x-text="course.title"></div>
+                <div class="top-course-meta">
+                  <span x-text="course.instructorName || '강사'"></span> · 
+                  <span x-text="(course.enrolledCount || 0) + '명 수강'"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="card">
+          <div class="card-title">🚀 바로가기</div>
+          <a href="chat.html" style="display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; text-decoration:none; color:#374151; font-size:0.875rem; margin-bottom:0.5rem; transition:all 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span>💬</span> AI 튜터와 대화
+          </a>
+          <a href="#" style="display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; text-decoration:none; color:#374151; font-size:0.875rem; margin-bottom:0.5rem; transition:all 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'" onclick="const role=localStorage.getItem('userRole'); location.href=(role==='instructor'||role==='admin'||role==='staff')?'instructorpage.html':'mypage.html'; return false;">
+            <span>👤</span> 마이페이지
+          </a>
+          <a href="my-courses.html" style="display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; text-decoration:none; color:#374151; font-size:0.875rem; margin-bottom:0.5rem; transition:all 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span>📚</span> 내 강의
+          </a>
+          <a href="contact.html" style="display:flex; align-items:center; gap:0.5rem; padding:0.625rem; border-radius:0.5rem; text-decoration:none; color:#374151; font-size:0.875rem; transition:all 0.15s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            <span>💡</span> 문의하기
+          </a>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div>
+        <!-- Available Courses Section -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-title">📚 개설 강의 목록</div>
+          
+          <!-- Search Bar -->
+          <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; align-items:center; max-width:100%; box-sizing:border-box;">
+            <select x-model="courseSearchType" style="padding:0.625rem 0.75rem; border:1px solid #e5e7eb; border-radius:0.5rem; font-size:0.875rem; background:white; cursor:pointer; flex-shrink:0;">
+              <option value="title">강의명</option>
+              <option value="instructor">강사명</option>
+            </select>
+            <div style="flex:1; display:flex; min-width:0; position:relative;">
+              <input 
+                type="text" 
+                x-model="courseSearchQuery" 
+                :placeholder="courseSearchType === 'title' ? '강의명을 입력하세요' : '강사명을 입력하세요'"
+                @keyup.enter="applyCourseSearch()"
+                style="width:100%; padding:0.625rem 2.5rem 0.625rem 0.75rem; border:1px solid #e5e7eb; border-radius:0.5rem; font-size:0.875rem; box-sizing:border-box;"
+              >
+              <button @click="applyCourseSearch()" style="position:absolute; right:0; top:0; bottom:0; padding:0 0.75rem; background:#10b981; color:white; border:none; border-radius:0 0.5rem 0.5rem 0; cursor:pointer; display:flex; align-items:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </button>
+            </div>
+            <button @click="clearCourseSearch()" x-show="courseSearchQuery" style="padding:0.625rem 0.75rem; background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; border-radius:0.5rem; font-size:0.875rem; cursor:pointer; flex-shrink:0; white-space:nowrap;">초기화</button>
+          </div>
+          
+          <!-- Courses Grid - Fixed 2x2 Layout -->
+          <div class="courses-grid-mobile" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem; margin-bottom:1.5rem; min-height:400px;">
+            <!-- Data Cards -->
+            <template x-for="course in paginatedCourses" :key="course.id">
+              <div style="border:1px solid #e5e7eb; border-radius:0.75rem; overflow:hidden; transition:all 0.15s; cursor:pointer; background:white; height:100%;" @click="openCourseDetail(course)" @mouseover="$el.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" @mouseout="$el.style.boxShadow='none'">
+                <div style="height:140px; background:linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:white; font-size:3rem;">📖</div>
+                <div style="padding:1rem;">
+                  <div style="font-size:0.75rem; font-weight:600; color:#059669; text-transform:uppercase; letter-spacing:0.05em;" x-text="getCategoryText(course.category) || '강의'"></div>
+                  <div style="font-weight:600; font-size:1rem; margin-top:0.25rem; color:#111827;" x-text="course.title"></div>
+                  <div style="font-size:0.875rem; color:#6b7280; margin-top:0.5rem;" x-text="course.description?.substring(0, 60) + '...'"></div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid #e5e7eb;">
+                    <span style="font-size:0.75rem; color:#6b7280;">
+                      <span style="font-weight:600;" x-text="course.instructorName"></span> 강사
+                    </span>
+                    <span style="font-size:0.75rem; padding:0.25rem 0.5rem; background:#ecfdf5; color:#065f46; border-radius:9999px; font-weight:600;" x-text="(course.enrolledCount || 0) + '/' + (course.maxStudents || 20) + '명'"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <!-- Skeleton Placeholders for Empty Slots -->
+            <template x-for="i in emptySlots" :key="'skeleton-'+i">
+              <div style="border:1px solid #e5e7eb; border-radius:0.75rem; overflow:hidden; background:#f9fafb; height:100%; opacity:0.6;">
+                <div style="height:140px; background:linear-gradient(135deg, #f3f4f6, #e5e7eb); display:flex; align-items:center; justify-content:center;">
+                  <span style="font-size:3rem; opacity:0.3;">📖</span>
+                </div>
+                <div style="padding:1rem;">
+                  <div style="height:0.75rem; width:35%; background:#e5e7eb; border-radius:0.25rem; margin-bottom:0.75rem;"></div>
+                  <div style="height:1rem; width:65%; background:#e5e7eb; border-radius:0.25rem; margin-bottom:0.5rem;"></div>
+                  <div style="height:0.875rem; width:85%; background:#e5e7eb; border-radius:0.25rem; margin-bottom:1rem;"></div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding-top:0.75rem; border-top:1px solid #e5e7eb;">
+                    <div style="height:0.75rem; width:25%; background:#e5e7eb; border-radius:0.25rem;"></div>
+                    <div style="height:0.75rem; width:20%; background:#e5e7eb; border-radius:9999px;"></div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <!-- Empty State (No Courses At All) -->
+            <template x-if="filteredCourses.length === 0">
+              <div style="grid-column:1/-1; text-align:center; padding:3rem; color:#9ca3af;">
+                <div style="font-size:3rem; margin-bottom:0.5rem;">🔍</div>
+                <p>검색 결과가 없습니다</p>
+                <p style="font-size:0.875rem; margin-top:0.5rem;">다른 검색어로 시도해보세요</p>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Pagination -->
+          <div x-show="totalPages > 1" class="pagination">
+            <button class="page-btn arrow" :class="currentPage === 1 ? 'disabled' : ''" @click="currentPage = Math.max(1, currentPage - 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <template x-for="page in visiblePages" :key="page">
+              <button class="page-btn" :class="currentPage === page ? 'active' : ''" @click="currentPage = page" x-text="page"></button>
+            </template>
+            <button class="page-btn arrow" :class="currentPage === totalPages ? 'disabled' : ''" @click="currentPage = Math.min(totalPages, currentPage + 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </button>
+          </div>
+          <div x-show="filteredCourses.length > 0" class="page-info">
+            총 <span x-text="filteredCourses.length"></span>개 강의 중 <span x-text="(currentPage-1)*itemsPerPage+1"></span>–<span x-text="Math.min(currentPage*itemsPerPage, filteredCourses.length)"></span>번째
+          </div>
+        </div>
+
+        <!-- Enrolled Courses Feed - 3 Column Grid with Pagination -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>📖 내 수강 강의</span>
+            <span x-show="enrolledCourses.length > 0" style="font-size:0.75rem; color:#6b7280; font-weight:400;" x-text="enrolledPage + '/' + totalEnrolledPages"></span>
+          </div>
+          
+          <!-- Empty State (No Enrolled Courses At All) -->
+          <template x-if="enrolledCourses.length === 0">
+            <div style="text-align:center; padding:2rem; color:#9ca3af;">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">📚</div>
+              <p>수강 중인 강의가 없습니다</p>
+              <p style="font-size:0.875rem; margin-top:0.5rem;">위의 개설 강의 목록에서 수강 신청해보세요!</p>
+            </div>
+          </template>
+          
+          <!-- 3-Card Horizontal Row with Fade Animation -->
+          <div x-show="enrolledCourses.length > 0" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="card-row-scroll" style="display:flex; flex-direction:row; gap:1rem; margin-bottom:1rem;">
+            <!-- Data Cards -->
+            <template x-for="course in paginatedEnrolledCourses" :key="course.id">
+              <div style="flex:1; min-width:0; border:1px solid #e5e7eb; border-radius:0.75rem; overflow:hidden; transition:all 0.15s; cursor:pointer; background:white; height:100%;" @click="window.location.href='classroom.html?courseId=' + course.courseId" @mouseover="$el.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" @mouseout="$el.style.boxShadow='none'">
+                <div style="height:80px; background:linear-gradient(135deg, #2563eb, #7c3aed); display:flex; align-items:center; justify-content:center; color:white; font-size:1.75rem;">🎓</div>
+                <div style="padding:0.75rem;">
+                  <div style="font-weight:600; font-size:0.85rem; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="course.courseTitle || '강의'"></div>
+                  <div style="font-size:0.7rem; color:#6b7280; margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="course.instructorName ? course.instructorName + ' 강사' : ''"></div>
+                  <div style="margin-top:0.4rem; display:flex; align-items:center; gap:0.4rem;">
+                    <span style="font-size:0.65rem; padding:0.15rem 0.4rem; background:#dcfce7; color:#166534; border-radius:9999px; font-weight:600;">수강 중</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <!-- CTA Placeholder for Last Page Empty Slots -->
+            <template x-if="enrolledPage === totalEnrolledPages && paginatedEnrolledCourses.length < enrolledPerPage">
+              <div @click="window.location.href='classroom.html'" style="flex:1; min-width:0; border:2px dashed #d1d5db; border-radius:0.75rem; overflow:hidden; background:#f9fafb; height:100%; cursor:pointer; transition:all 0.15s; display:flex; flex-direction:column; align-items:center; justify-content:center;" @mouseover="$el.style.borderColor='#9ca3af'; $el.style.background='#f3f4f6'" @mouseout="$el.style.borderColor='#d1d5db'; $el.style.background='#f9fafb'">
+                <div style="font-size:2rem; margin-bottom:0.5rem;">➕</div>
+                <div style="font-size:0.8rem; color:#6b7280; font-weight:500;">새 강의 등록</div>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Sleek Pagination -->
+          <div x-show="totalEnrolledPages > 1" class="pagination" style="padding-top:0.75rem; border-top:1px solid #f3f4f6;">
+            <button class="page-btn arrow" :class="enrolledPage === 1 ? 'disabled' : ''" @click="enrolledPage = Math.max(1, enrolledPage - 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <template x-for="page in visibleEnrolledPages" :key="page">
+              <button class="page-btn" :class="enrolledPage === page ? 'active' : ''" @click="enrolledPage = page" x-text="page"></button>
+            </template>
+            <button class="page-btn arrow" :class="enrolledPage === totalEnrolledPages ? 'disabled' : ''" @click="enrolledPage = Math.min(totalEnrolledPages, enrolledPage + 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Chats - 3 Column Grid with Pagination -->
+        <div class="card">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>💬 최근 학습 대화</span>
+            <span x-show="recentChats.length > 0" style="font-size:0.75rem; color:#6b7280; font-weight:400;" x-text="chatPage + '/' + totalChatPages"></span>
+          </div>
+          
+          <!-- Empty State (No Chats At All) -->
+          <template x-if="recentChats.length === 0">
+            <div style="text-align:center; padding:2rem; color:#9ca3af;">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">💬</div>
+              <p>아직 대화가 없습니다.</p>
+              <a href="chat.html" style="color:#2563eb; font-weight:500; text-decoration:none;">AI 튜터와 대화 시작하기 →</a>
+            </div>
+          </template>
+          
+          <!-- 3-Card Horizontal Row with Fade Animation -->
+          <div x-show="recentChats.length > 0" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="card-row-scroll" style="display:flex; flex-direction:row; gap:1rem; margin-bottom:1rem;">
+            <!-- Data Cards -->
+            <template x-for="chat in paginatedRecentChats" :key="chat.id">
+              <div style="flex:1; min-width:0; border:1px solid #e5e7eb; border-radius:0.75rem; overflow:hidden; transition:all 0.15s; cursor:pointer; background:white; height:100%;" @click="goToChat(chat.id)" @mouseover="$el.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" @mouseout="$el.style.boxShadow='none'">
+                <div :style="'height:80px; display:flex; align-items:center; justify-content:center; background:' + getGradient(chat.id)">
+                  <span style="font-size:1.75rem;">💬</span>
+                </div>
+                <div style="padding:0.75rem;">
+                  <div style="font-size:0.7rem; color:#2563eb; font-weight:600; margin-bottom:0.2rem;">대화</div>
+                  <div style="font-weight:600; font-size:0.85rem; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="chat.title || '새 대화'"></div>
+                  <div style="height:4px; background:#f3f4f6; border-radius:2px; margin:0.5rem 0; overflow:hidden;">
+                    <div style="height:100%; width:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6); border-radius:2px;"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#9ca3af;">
+                    <span x-text="formatDate(chat.updated_at)"></span>
+                    <span x-text="(chat.message_count || 0) + '개 메시지'"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <!-- CTA Placeholder for Last Page Empty Slots -->
+            <template x-if="chatPage === totalChatPages && paginatedRecentChats.length < chatsPerPage">
+              <div @click="window.location.href='chat.html'" style="flex:1; min-width:0; border:2px dashed #d1d5db; border-radius:0.75rem; overflow:hidden; background:#f9fafb; height:100%; cursor:pointer; transition:all 0.15s; display:flex; flex-direction:column; align-items:center; justify-content:center;" @mouseover="$el.style.borderColor='#9ca3af'; $el.style.background='#f3f4f6'" @mouseout="$el.style.borderColor='#d1d5db'; $el.style.background='#f9fafb'">
+                <div style="font-size:2rem; margin-bottom:0.5rem;">➕</div>
+                <div style="font-size:0.8rem; color:#6b7280; font-weight:500;">새 대화 시작</div>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Sleek Pagination -->
+          <div x-show="totalChatPages > 1" class="pagination" style="padding-top:0.75rem; border-top:1px solid #f3f4f6;">
+            <button class="page-btn arrow" :class="chatPage === 1 ? 'disabled' : ''" @click="chatPage = Math.max(1, chatPage - 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <template x-for="page in visibleChatPages" :key="page">
+              <button class="page-btn" :class="chatPage === page ? 'active' : ''" @click="chatPage = page" x-text="page"></button>
+            </template>
+            <button class="page-btn arrow" :class="chatPage === totalChatPages ? 'disabled' : ''" @click="chatPage = Math.min(totalChatPages, chatPage + 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div>
+        <!-- Learning Stats -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-title">📈 나의 학습 요약</div>
+          <div class="stat-row">
+            <span class="stat-label">총 대화 수</span>
+            <span class="stat-value" style="color:#2563eb;" x-text="stats.totalChats"></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">발행한 질문 티켓</span>
+            <span class="stat-value" style="color:#f59e0b;" x-text="stats.totalTickets"></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">이번 주 대화</span>
+            <span class="stat-value" style="color:#10b981;" x-text="stats.weeklyChats"></span>
+          </div>
+          <a href="chat.html" style="display:block; text-align:center; margin-top:1rem; padding:0.625rem; background:#2563eb; color:white; border-radius:0.5rem; text-decoration:none; font-weight:600; font-size:0.875rem;">
+            학습 계속하기
+          </a>
+        </div>
+
+        <!-- 강사 답변 조회 - Table Style -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>💬 강사 답변</span>
+            <span x-show="myTickets.length > 0" style="font-size:0.75rem; color:#6b7280; font-weight:400;" x-text="ticketPage + '/' + totalTicketPages"></span>
+          </div>
+          
+          <!-- Table List -->
+          <div style="min-height:240px;">
+            <!-- Data Rows -->
+            <template x-for="ticket in paginatedTickets" :key="ticket.id">
+              <div @click="openTicketDetail(ticket)" style="display:flex; align-items:center; gap:0.75rem; padding:0.875rem; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='transparent'">
+                <!-- Icon -->
+                <div style="width:40px; height:40px; border-radius:0.5rem; background:linear-gradient(135deg, #3b82f6, #1d4ed8); display:flex; align-items:center; justify-content:center; color:white; font-size:1.25rem; flex-shrink:0;">💬</div>
+                <!-- Content -->
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                    <span style="font-size:0.7rem; padding:2px 8px; border-radius:9999px; font-weight:600; white-space:nowrap;"
+                      :style="ticket.status==='resolved' ? 'background:#dcfce7;color:#166534' : (ticket.status==='in-progress' ? 'background:#dbeafe;color:#1e40af' : 'background:#fef3c7;color:#92400e')"
+                      x-text="ticket.status==='resolved' ? '해결' : (ticket.status==='in-progress' ? '진행' : '대기')">
+                    </span>
+                    <span style="font-size:0.75rem; color:#1f2937; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;" x-text="ticket.student_question ? ticket.student_question.substring(0,45)+(ticket.student_question.length>45?'...':'') : ('티켓 #'+ticket.id.slice(-4))"></span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.7rem; color:#9ca3af;">
+                    <span x-text="(ticket.instructor_name || '미지정') + ' 강사'"></span>
+                    <span>·</span>
+                    <span x-text="formatDate(ticket.created_at)"></span>
+                  </div>
+                </div>
+                <!-- Arrow -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#d1d5db" width="16" height="16" style="flex-shrink:0;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </template>
+            
+            <!-- Skeleton Rows -->
+            <template x-for="i in ticketEmptySlots" :key="'ticket-skeleton-'+i">
+              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.875rem; border-bottom:1px solid #f3f4f6; opacity:0.5;">
+                <!-- Skeleton Icon -->
+                <div style="width:40px; height:40px; border-radius:0.5rem; background:#e5e7eb; flex-shrink:0;"></div>
+                <!-- Skeleton Content -->
+                <div style="flex:1;">
+                  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                    <div style="height:18px; width:36px; background:#e5e7eb; border-radius:9999px;"></div>
+                    <div style="height:14px; width:60%; background:#e5e7eb; border-radius:0.25rem;"></div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div style="height:12px; width:80px; background:#e5e7eb; border-radius:0.25rem;"></div>
+                    <div style="height:12px; width:4px; background:#e5e7eb; border-radius:50%;"></div>
+                    <div style="height:12px; width:60px; background:#e5e7eb; border-radius:0.25rem;"></div>
+                  </div>
+                </div>
+                <!-- Skeleton Arrow -->
+                <div style="width:16px; height:16px; background:#e5e7eb; border-radius:0.125rem; flex-shrink:0;"></div>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Empty State -->
+          <template x-if="myTickets.length === 0">
+            <div style="text-align:center; padding:2rem; color:#9ca3af;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#d1d5db" width="32" height="32" style="margin:0 auto 0.5rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.97 5.97 0 01-3.473-1.922A5.987 5.987 0 01.75 15.375c0-1.83.93-3.59 2.55-4.866A9.956 9.956 0 013 9c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+              </svg>
+              <p style="font-size:0.875rem;">아직 질문 티켓이 없습니다</p>
+            </div>
+          </template>
+          
+          <!-- Pagination -->
+          <div x-show="totalTicketPages > 1" class="pagination" style="padding-top:0.75rem; border-top:1px solid #f3f4f6;">
+            <button class="page-btn arrow" :class="ticketPage === 1 ? 'disabled' : ''" @click="ticketPage = Math.max(1, ticketPage - 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <template x-for="page in visibleTicketPages" :key="page">
+              <button class="page-btn" :class="ticketPage === page ? 'active' : ''" @click="ticketPage = page" x-text="page"></button>
+            </template>
+            <button class="page-btn arrow" :class="ticketPage === totalTicketPages ? 'disabled' : ''" @click="ticketPage = Math.min(totalTicketPages, ticketPage + 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Admin Announcements - Table Style -->
+        <div class="card">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>📢 전체 공지사항</span>
+            <span x-show="adminAnnouncements.length > 0" style="font-size:0.75rem; color:#6b7280; font-weight:400;" x-text="announcementPage + '/' + totalAnnouncementPages"></span>
+          </div>
+          
+          <!-- Table List -->
+          <div style="min-height:240px;">
+            <!-- Data Rows -->
+            <template x-for="notice in paginatedAnnouncements" :key="notice.id">
+              <div @click="window.location.href = (window.innerWidth <= 768 ? 'community-mobile.html' : 'community.html') + '?postId=' + notice.id + '&type=announcement'" style="display:flex; align-items:center; gap:0.75rem; padding:0.875rem; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='transparent'">
+                <!-- Icon -->
+                <div style="width:40px; height:40px; border-radius:0.5rem; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; color:white; font-size:1.25rem; flex-shrink:0;">📢</div>
+                <!-- Content -->
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                    <span x-show="notice.isImportant" style="font-size:0.7rem; padding:2px 8px; background:#fef2f2; color:#dc2626; border-radius:9999px; font-weight:600; white-space:nowrap;">중요</span>
+                    <span x-show="!notice.isImportant" style="font-size:0.7rem; padding:2px 8px; background:#f1f5f9; color:#64748b; border-radius:9999px; font-weight:600; white-space:nowrap;">일반</span>
+                    <span style="font-size:0.75rem; color:#1f2937; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;" x-text="notice.title"></span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.7rem; color:#9ca3af;">
+                    <span x-text="notice.content ? notice.content.replace(/<[^>]*>/g, '').substring(0,40)+(notice.content.replace(/<[^>]*>/g, '').length>40?'...':'') : ''"></span>
+                  </div>
+                </div>
+                <!-- Time -->
+                <span style="font-size:0.7rem; color:#9ca3af; flex-shrink:0;" x-text="formatRelativeTime(notice.createdAt)"></span>
+                <!-- Arrow -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#d1d5db" width="16" height="16" style="flex-shrink:0;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </template>
+            
+            <!-- Skeleton Rows -->
+            <template x-for="i in announcementEmptySlots" :key="'announcement-skeleton-'+i">
+              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.875rem; border-bottom:1px solid #f3f4f6; opacity:0.5;">
+                <!-- Skeleton Icon -->
+                <div style="width:40px; height:40px; border-radius:0.5rem; background:#e5e7eb; flex-shrink:0;"></div>
+                <!-- Skeleton Content -->
+                <div style="flex:1;">
+                  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                    <div style="height:18px; width:36px; background:#e5e7eb; border-radius:9999px;"></div>
+                    <div style="height:14px; width:70%; background:#e5e7eb; border-radius:0.25rem;"></div>
+                  </div>
+                  <div style="height:12px; width:50%; background:#e5e7eb; border-radius:0.25rem;"></div>
+                </div>
+                <!-- Skeleton Time -->
+                <div style="height:12px; width:50px; background:#e5e7eb; border-radius:0.25rem; flex-shrink:0;"></div>
+                <!-- Skeleton Arrow -->
+                <div style="width:16px; height:16px; background:#e5e7eb; border-radius:0.125rem; flex-shrink:0;"></div>
+              </div>
+            </template>
+          </div>
+          
+          <!-- Empty State -->
+          <template x-if="adminAnnouncements.length === 0">
+            <div style="text-align:center; padding:2rem; color:#9ca3af;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#d1d5db" width="32" height="32" style="margin:0 auto 0.5rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+              </svg>
+              <p style="font-size:0.875rem;">등록된 공지사항이 없습니다</p>
+            </div>
+          </template>
+          
+          <!-- Pagination -->
+          <div x-show="totalAnnouncementPages > 1" class="pagination" style="padding-top:0.75rem; border-top:1px solid #f3f4f6;">
+            <button class="page-btn arrow" :class="announcementPage === 1 ? 'disabled' : ''" @click="announcementPage = Math.max(1, announcementPage - 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+            </button>
+            <template x-for="page in visibleAnnouncementPages" :key="page">
+              <button class="page-btn" :class="announcementPage === page ? 'active' : ''" @click="announcementPage = page" x-text="page"></button>
+            </template>
+            <button class="page-btn arrow" :class="announcementPage === totalAnnouncementPages ? 'disabled' : ''" @click="announcementPage = Math.min(totalAnnouncementPages, announcementPage + 1)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Chat Settings Modal (AI 채팅방 전용) -->
+  <div x-show="showChatSettingsModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" @click.self="showChatSettingsModal = false">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full" @click.stop>
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-lg font-semibold">⚙️ 채팅 설정</h3>
+        <button @click="showChatSettingsModal = false" class="text-gray-400 hover:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-5">
+        <!-- Theme -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">🎨 테마</label>
+          <div style="display:flex; gap:8px;">
+            <button @click="applyTheme('light')" :style="theme==='light' ? 'border:2px solid #2563eb; background:#f0f9ff' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              ☀️ 라이트
+            </button>
+            <button @click="applyTheme('dark')" :style="theme==='dark' ? 'border:2px solid #2563eb; background:#1e293b; color:white' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              🌙 다크
+            </button>
+            <button @click="applyTheme('cupcake')" :style="theme==='cupcake' ? 'border:2px solid #2563eb; background:#fdf2f8' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              🧁 컵케이크
+            </button>
+          </div>
+        </div>
+        <!-- Language -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">🌐 언어</label>
+          <div style="display:flex; gap:8px;">
+            <button @click="setLanguage('ko')" :style="language==='ko' ? 'border:2px solid #2563eb; background:#f0f9ff' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              🇰🇷 한국어
+            </button>
+            <button @click="setLanguage('en')" :style="language==='en' ? 'border:2px solid #2563eb; background:#f0f9ff' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              🇺🇸 English
+            </button>
+          </div>
+        </div>
+        <!-- Notifications -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">🔔 알림</label>
+          <div style="display:flex; gap:8px;">
+            <button @click="toggleNotifications(true)" :style="notificationsEnabled ? 'border:2px solid #2563eb; background:#f0f9ff' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              🔔 켜기 <span style="display:block; font-size:11px; color:#6b7280; margin-top:2px;">실시간 팝업 알림</span>
+            </button>
+            <button @click="toggleNotifications(false)" :style="!notificationsEnabled ? 'border:2px solid #2563eb; background:#fff7ed' : 'border:2px solid #e5e7eb'" style="flex:1; padding:10px; border-radius:8px; cursor:pointer; text-align:center; font-size:13px; font-weight:500;">
+              🔕 끄기 <span style="display:block; font-size:11px; color:#6b7280; margin-top:2px;">알림함에서만 확인</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 border-t">
+        <button @click="showChatSettingsModal = false" class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div x-show="showProfileModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" @click.self="showProfileModal = false">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full" @click.stop>
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-lg font-semibold">👤 프로필</h3>
+        <button @click="showProfileModal = false" class="text-gray-400 hover:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-5">
+        <!-- Profile Avatar -->
+        <div style="text-align:center; margin-bottom:1.5rem;">
+          <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#8b5cf6); display:flex; align-items:center; justify-content:center; margin:0 auto 0.75rem; font-size:2rem; color:white; font-weight:700;" x-text="userInitials"></div>
+          <template x-if="!editingProfile">
+            <div>
+              <h3 style="font-size:1.25rem; font-weight:700;" x-text="user?.displayName || '사용자'"></h3>
+              <p style="color:#6b7280; font-size:0.875rem;" x-text="user?.email"></p>
+              <span style="display:inline-block; margin-top:0.5rem; padding:0.25rem 0.75rem; background:#dbeafe; color:#2563eb; border-radius:9999px; font-size:0.75rem; font-weight:600;">수강생</span>
+              
+              <!-- 강사 자격증 업로드 섹션 -->
+              <div style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 0.75rem; border: 2px solid #f59e0b;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  <span style="font-size: 1.25rem;">🏆</span>
+                  <h4 style="font-weight: 700; color: #92400e; font-size: 0.9rem; margin: 0;">강사 자격 인증</h4>
+                </div>
+                <p style="font-size: 0.875rem; color: #92400e; margin-bottom: 0.75rem;">강사로 전환하시려면 자격증을 업로드해주세요. 관리자 승인 후 강사 권한이 부여됩니다.</p>
+                
+                <input type="file" id="certFileInput" accept="image/*" @change="handleCertificateUpload($event)" style="display: none;">
+                <label for="certFileInput" class="cert-upload" style="display: block; padding: 1rem; border: 2px dashed #f59e0b; border-radius: 0.5rem; text-align: center; cursor: pointer; background: white;">
+                  <div x-show="!certificatePreview" style="text-align: center; color: #6b7280;">
+                    <div style="font-size: 2rem; margin-bottom: 0.25rem;">📄</div>
+                    <p style="font-size: 0.875rem;">강사증 이미지를 업로드하세요</p>
+                    <p style="font-size: 0.75rem; color: #9ca3af;">JPG, PNG (최대 40MB)</p>
+                  </div>
+                  <div x-show="certificatePreview" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <img :src="certificatePreview" style="max-height: 7rem; max-width: 100%; object-fit: contain; border-radius: 0.25rem;">
+                  </div>
+                </label>
+                
+                <button x-show="certificateFile" @click="submitInstructorRequest()" :disabled="isSubmittingCertificate" style="margin-top: 0.75rem; width: 100%; padding: 0.625rem; background: #f59e0b; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; font-size: 0.875rem;">
+                  <span x-show="!isSubmittingCertificate">강사 인증 요청</span>
+                  <span x-show="isSubmittingCertificate">제출 중...</span>
+                </button>
+              </div>
+            </div>
+          </template>
+          <template x-if="editingProfile">
+            <div style="text-align:left; margin-top:1rem;">
+              <label style="display:block; font-size:0.875rem; font-weight:500; color:#374151; margin-bottom:0.5rem;">이름</label>
+              <input type="text" x-model="profileForm.displayName" style="width:100%; padding:0.625rem; border:2px solid #e5e7eb; border-radius:0.5rem; font-size:0.875rem; box-sizing:border-box;" placeholder="이름을 입력하세요">
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="p-4 border-t" style="display:flex; gap:8px;">
+        <template x-if="!editingProfile">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button @click="editingProfile = true; profileForm.displayName = user?.displayName || ''" style="flex:1; padding:0.625rem; border:2px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:white;">✏️ 프로필 수정</button>
+            <button @click="doLogout()" style="flex:1; padding:0.625rem; border:none; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:#fee2e2; color:#dc2626;">로그아웃</button>
+          </div>
+        </template>
+        <template x-if="editingProfile">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button @click="editingProfile = false" style="flex:1; padding:0.625rem; border:2px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:white;">취소</button>
+            <button @click="saveProfile()" style="flex:1; padding:0.625rem; border:none; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:#2563eb; color:white;">저장</button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Course Detail Modal with Enrollment -->
+  <div x-show="showCourseDetailModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" @click.self="closeCourseDetail()" x-cloak>
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" @click.stop>
+      <!-- Modal Header -->
+      <div class="p-6 border-b" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #10b981;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="display:inline-block; padding:0.25rem 0.75rem; background:#10b981; color:white; font-size:0.75rem; font-weight:600; border-radius:9999px; margin-bottom:0.5rem;" x-text="getCategoryText(selectedCourse?.category) || '강의'"></div>
+            <h2 style="font-size:1.5rem; font-weight:700; color:#111827;" x-text="selectedCourse?.title || '강의 상세'"></h2>
+          </div>
+          <button @click="closeCourseDetail()" class="text-gray-400 hover:text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="p-6">
+        <!-- Course Info Grid -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:1rem; margin-bottom:1.5rem; padding:1rem; background:#f9fafb; border-radius:0.75rem;">
+          <div>
+            <span style="font-size:0.75rem; color:#6b7280; display:block; margin-bottom:0.25rem;">강사</span>
+            <span style="font-weight:600; color:#111827;" x-text="selectedCourse?.instructorName || '-'"></span>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color:#6b7280; display:block; margin-bottom:0.25rem;">대상 학년</span>
+            <span style="font-weight:600; color:#111827;" x-text="getTargetGradeText(selectedCourse?.targetGrade)"></span>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color:#6b7280; display:block; margin-bottom:0.25rem;">정원</span>
+            <span style="font-weight:600; color:#111827;" x-text="(selectedCourse?.enrolledCount || 0) + '/' + (selectedCourse?.maxStudents || 20) + '명'"></span>
+          </div>
+          <div>
+            <span style="font-size:0.75rem; color:#6b7280; display:block; margin-bottom:0.25rem;">승인일</span>
+            <span style="font-weight:600; color:#111827;" x-text="selectedCourse?.approvedAt ? formatDate(selectedCourse.approvedAt) : '-'"></span>
+          </div>
+        </div>
+        
+        <!-- Course Schedule -->
+        <div x-show="selectedCourse?.schedule" style="margin-bottom:1.5rem; padding:1rem; background:#fef3c7; border-radius:0.75rem; border-left:4px solid #f59e0b;">
+          <span style="font-weight:600; color:#92400e; font-size:0.875rem;">📅 강의 일정</span>
+          <p style="color:#78350f; margin-top:0.25rem;" x-text="selectedCourse?.schedule"></p>
+        </div>
+        
+        <!-- Course Description -->
+        <div style="margin-bottom:1.5rem;">
+          <h3 style="font-size:1rem; font-weight:600; color:#111827; margin-bottom:0.75rem;">강의 설명</h3>
+          <p style="color:#4b5563; line-height:1.7; white-space:pre-wrap;" x-text="selectedCourse?.description || '설명이 없습니다.'"></p>
+        </div>
+        
+        <!-- Additional Notes -->
+        <div x-show="selectedCourse?.notes" style="margin-bottom:1.5rem; padding:1rem; background:#f3f4f6; border-radius:0.75rem;">
+          <h3 style="font-size:0.875rem; font-weight:600; color:#374151; margin-bottom:0.5rem;">📌 추가 안내사항</h3>
+          <p style="color:#6b7280; font-size:0.875rem; line-height:1.6;" x-text="selectedCourse?.notes"></p>
+        </div>
+        
+        <!-- Enrollment Status -->
+        <div x-show="selectedCourse?.isEnrolled" style="margin-bottom:1.5rem; padding:1rem; background:#dcfce7; border-radius:0.75rem; border:2px solid #10b981; text-align:center;">
+          <div style="font-size:2rem; margin-bottom:0.5rem;">✅</div>
+          <h3 style="font-size:1rem; font-weight:600; color:#166534; margin-bottom:0.25rem;">수강 신청 완료</h3>
+          <p style="color:#15803d; font-size:0.875rem;">이 강의에 이미 수강 신청하셨습니다.</p>
+          <p x-show="selectedCourse?.enrollmentStatus === 'approved'" style="color:#15803d; font-size:0.875rem; margin-top:0.5rem; font-weight:600;">🎉 승인되었습니다!</p>
+          <p x-show="selectedCourse?.enrollmentStatus === 'pending'" style="color:#b45309; font-size:0.875rem; margin-top:0.5rem;">⏳ 승인 대기 중입니다.</p>
+          <p x-show="selectedCourse?.enrollmentStatus === 'rejected'" style="color:#dc2626; font-size:0.875rem; margin-top:0.5rem;">❌ 거절되었습니다.</p>
+        </div>
+        
+        <!-- Full Capacity Warning -->
+        <div x-show="!selectedCourse?.isEnrolled && selectedCourse?.enrolledCount >= selectedCourse?.maxStudents" style="margin-bottom:1.5rem; padding:1rem; background:#fee2e2; border-radius:0.75rem; border-left:4px solid #ef4444;">
+          <span style="font-weight:600; color:#991b1b; font-size:0.875rem;">⚠️ 정원 초과</span>
+          <p style="color:#7f1d1d; margin-top:0.25rem; font-size:0.875rem;">이 강의는 이미 정원이 다 찼습니다. 대기 신청은 불가능합니다.</p>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="p-4 border-t" style="display:flex; gap:8px; justify-content:center;">
+        <button @click="closeCourseDetail()" style="padding:0.75rem 1.5rem; border:2px solid #e5e7eb; border-radius:0.5rem; cursor:pointer; font-weight:500; font-size:0.875rem; background:white;">닫기</button>
+        <!-- 미신청 + 정원 여유 있음 -->
+        <button
+          x-show="!selectedCourse?.isEnrolled && selectedCourse?.enrolledCount < selectedCourse?.maxStudents"
+          @click="applyForCourse()"
+          :disabled="isApplying"
+          style="padding:0.75rem 2rem; background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.875rem; display:flex; align-items:center; gap:0.5rem;"
+        >
+          <span x-show="!isApplying">수강 신청하기</span>
+          <span x-show="isApplying">신청 중...</span>
+        </button>
+        <!-- 승인됨 또는 대기 중인 경우 -->
+        <button
+          x-show="selectedCourse?.isEnrolled && selectedCourse?.enrollmentStatus !== 'rejected'"
+          disabled
+          style="padding:0.75rem 2rem; background:#d1d5db; color:#6b7280; border:none; border-radius:0.5rem; cursor:not-allowed; font-weight:600; font-size:0.875rem;"
+        >
+          이미 신청 완료
+        </button>
+        <!-- 거절된 경우: 다시 신청하기 버튼 -->
+        <button
+          x-show="selectedCourse?.isEnrolled && selectedCourse?.enrollmentStatus === 'rejected'"
+          @click="reapplyForCourse()"
+          :disabled="isApplying"
+          style="padding:0.75rem 2rem; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; border:none; border-radius:0.5rem; cursor:pointer; font-weight:600; font-size:0.875rem; display:flex; align-items:center; gap:0.5rem;"
+        >
+          <span x-show="!isApplying">다시 신청하기</span>
+          <span x-show="isApplying">신청 중...</span>
+        </button>
+        <!-- 정원 초과 -->
+        <button
+          x-show="!selectedCourse?.isEnrolled && selectedCourse?.enrolledCount >= selectedCourse?.maxStudents"
+          disabled
+          style="padding:0.75rem 2rem; background:#fee2e2; color:#991b1b; border:none; border-radius:0.5rem; cursor:not-allowed; font-weight:600; font-size:0.875rem;"
+        >
+          정원 초과
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Application -->
+  <script type="module" src="js/dashboard.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- 하단 탭바 (모바일 전용) -->
+  <nav class="bottom-tab-bar">
+    <a href="chat.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>
+      AI 튜터
+    </a>
+    <a href="dashboard.html" class="active">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+      대시보드
+    </a>
+    <a href="my-courses.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+      내 강의
+    </a>
+  </nav>
+
+<footer style="text-align:center; padding:1.5rem; font-size:0.75rem; color:#9ca3af; border-top:1px solid #e5e7eb; margin-top:auto; background:white;">
+  © 2026 TutorBridge. All Rights Reserved. Developed by Joo Han-tae &amp; Kim Min-gi &amp; Son Jun-hyuk
+</footer>
+</body>
+</html>

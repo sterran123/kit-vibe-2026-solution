@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TutorBridge - 강사 마이페이지</title>
+  <script src="js/theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/mypage.css">
+</head>
+<body x-data="instructorPageApp()" x-init="init()" x-cloak>
+
+  <nav class="nav">
+    <div style="display:flex; align-items:center; gap:2rem;">
+      <a href="instructor.html" class="nav-logo">Tutor<span>Bridge</span></a>
+      <div class="nav-links">
+        <a href="instructor.html" class="nav-link">📊 대시보드</a>
+        <a href="community.html" class="nav-link" @click.prevent="window.location.href = window.innerWidth <= 768 ? 'community-mobile.html' : 'community.html'">📋 게시판</a>
+      </div>
+    </div>
+    <div class="nav-right" style="position:relative;">
+      <button style="background:none; border:none; cursor:pointer; position:relative;" @click="showNotifications = !showNotifications" aria-label="알림">
+        <svg width="22" height="22" fill="none" stroke="#6b7280" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        <span x-show="unreadCount > 0" x-text="unreadCount" style="position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
+      </button>
+
+      <!-- Notifications Dropdown -->
+      <div x-show="showNotifications" @click.away="showNotifications = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(400px, calc(100vw - 1rem)); max-height:70vh; overflow-y:auto; background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:1rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-weight:600; font-size:1.125rem;">알림</h3>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button x-show="notifications.length > 0" @click.stop="markAllNotificationsRead()" style="background:none; border:none; cursor:pointer; font-size:0.75rem; color:#2563eb; padding:0.25rem 0.5rem; border-radius:0.375rem; transition:background 0.1s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='none'">모두 읽음</button>
+            <button style="background:none; border:none; cursor:pointer; padding:0.25rem;" @click="showNotifications = false">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6b7280" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        </div>
+        <div style="padding:0;">
+          <template x-if="notifications.length === 0">
+            <div style="padding:2rem; text-align:center; color:#9ca3af;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#9ca3af" width="48" height="48" style="margin:0 auto 0.75rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              <p>새로운 알림이 없습니다</p>
+            </div>
+          </template>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div style="padding:1rem; border-bottom:1px solid #e5e7eb; transition:background-color 0.15s;" class="notification-item">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                <span style="font-weight:600; font-size:0.95rem; cursor:pointer; flex:1;" x-text="notification.title" @click="handleNotification(notification)"></span>
+                <div style="display:flex; align-items:center; gap:0.25rem; margin-left:0.5rem; flex-shrink:0;">
+                  <span style="font-size:0.75rem; color:#9ca3af; white-space:nowrap;" x-text="formatDate(notification.created_at)"></span>
+                  <button @click.stop="deleteNotification(notification)" style="background:none; border:none; cursor:pointer; padding:2px; color:#9ca3af; border-radius:4px; line-height:1; transition:color 0.1s;" title="읽음 처리" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p style="font-size:0.875rem; color:#6b7280; line-height:1.5; cursor:pointer;" x-text="notification.message" @click="handleNotification(notification)"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div @click="showProfileDropdown = !showProfileDropdown" style="cursor:pointer; width:36px; height:36px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;" aria-label="프로필">
+        <img x-show="profile.photoURL" :src="profile.photoURL" style="width:100%; height:100%; object-fit:cover;" alt="프로필">
+        <div x-show="!profile.photoURL" class="nav-avatar" x-text="userInitials" style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.875rem;"></div>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div x-show="showProfileDropdown" @click.away="showProfileDropdown = false" x-transition style="position:fixed; top:64px; right:0.5rem; margin-top:0; width:min(200px, calc(100vw - 1rem)); background:white; border-radius:0.75rem; box-shadow:0 10px 40px rgba(0,0,0,0.15); z-index:1000;" x-cloak>
+        <div style="padding:0.5rem;">
+          <a href="instructorpage.html" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none;">
+            👤 마이페이지
+          </a>
+          <a href="settings.html" class="dropdown-item" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#374151; display:flex; align-items:center; gap:0.5rem; text-decoration:none;">
+            ⚙️ 설정
+          </a>
+          <hr style="margin:0.25rem 0; border:none; border-top:1px solid #e5e7eb;">
+          <button @click="doLogout(); showProfileDropdown = false" class="dropdown-item-danger" style="width:100%; text-align:left; padding:0.625rem 1rem; font-size:0.875rem; color:#dc2626; display:flex; align-items:center; gap:0.5rem;">
+            🚪 로그아웃
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Profile Header -->
+    <div class="card">
+      <div class="profile-header">
+        <div class="profile-avatar-wrapper">
+          <img x-show="profile.photoURL" :src="profile.photoURL" class="profile-avatar" alt="프로필">
+          <div x-show="!profile.photoURL" class="profile-avatar" x-text="userInitials"></div>
+          <div class="profile-avatar-edit" @click="showPhotoUploadModal = true" title="프로필 사진 변경">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+            </svg>
+          </div>
+        </div>
+        <div class="profile-info">
+          <span class="user-role">강사</span>
+          <h1 x-text="profile.displayName || user?.displayName || '사용자'"></h1>
+          <div class="user-email">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="16" height="16">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+            <span x-text="user?.email || ''"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructor Stats -->
+      <div class="stat-grid instructor-stats">
+        <div class="stat-card instructor">
+          <div class="stat-value" x-text="instructorStats.totalCourses">0</div>
+          <div class="stat-label">등록한 강의</div>
+        </div>
+        <div class="stat-card instructor">
+          <div class="stat-value" x-text="instructorStats.totalStudents">0</div>
+          <div class="stat-label">총 수강생</div>
+        </div>
+        <div class="stat-card instructor">
+          <div class="stat-value" x-text="instructorStats.pendingTickets">0</div>
+          <div class="stat-label">미답변 질문</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Edit Form -->
+    <div class="card">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 1.5rem;">프로필 수정</h2>
+      <form @submit.prevent="saveProfile()">
+        <div class="form-group">
+          <label class="form-label">이름</label>
+          <input type="text" class="form-input" x-model="profileForm.displayName" placeholder="이름을 입력하세요">
+        </div>
+        <div class="form-group">
+          <label class="form-label">이메일</label>
+          <input type="email" class="form-input" x-model="profileForm.email" disabled>
+          <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">이메일은 변경할 수 없습니다.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="submit" class="btn btn-primary">저장하기</button>
+          <button type="button" class="btn btn-secondary" @click="resetProfileForm()">취소</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Password Change -->
+    <div class="card">
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 1.5rem;">비밀번호 변경</h2>
+      <form @submit.prevent="changePassword()">
+        <div class="form-group">
+          <label class="form-label">현재 비밀번호</label>
+          <input type="password" class="form-input" x-model="passwordForm.currentPassword" placeholder="현재 비밀번호">
+        </div>
+        <div class="form-group">
+          <label class="form-label">새 비밀번호</label>
+          <input type="password" class="form-input" x-model="passwordForm.newPassword" placeholder="새 비밀번호 (6자 이상)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">새 비밀번호 확인</label>
+          <input type="password" class="form-input" x-model="passwordForm.confirmPassword" placeholder="새 비밀번호 확인">
+        </div>
+        <button type="submit" class="btn btn-primary">비밀번호 변경</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Photo Upload Modal -->
+  <div x-show="showPhotoUploadModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5);" @click.self="showPhotoUploadModal = false">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full" @click.stop style="max-height:90vh; overflow-y:auto;">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-lg font-semibold">📷 프로필 사진 변경</h3>
+        <button @click="showPhotoUploadModal = false" class="text-gray-400 hover:text-gray-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-5">
+        <div x-show="!photoPreview" class="upload-area" @click="$refs.photoInput.click()" @drop.prevent="handlePhotoDrop($event)" @dragover.prevent="$event.target.classList.add('dragover')" @dragleave.prevent="$event.target.classList.remove('dragover')">
+          <div style="font-size:3rem; margin-bottom:1rem;">📷</div>
+          <p style="font-weight:600; color:#374151; margin-bottom:0.5rem;">사진을 여기에 드래그하거나 클릭하세요</p>
+          <p style="font-size:0.75rem; color:#9ca3af;">JPG, PNG 파일 (최대 5MB)</p>
+          <input type="file" x-ref="photoInput" @change="handlePhotoSelect($event)" accept="image/*" style="display:none;">
+        </div>
+        <div x-show="photoPreview" style="text-align:center;">
+          <img :src="photoPreview" class="upload-preview" alt="미리보기">
+          <div style="display:flex; gap:0.75rem; justify-content:center; margin-top:1rem;">
+            <button @click="photoPreview = null; photoFile = null;" class="btn btn-secondary">다시 선택</button>
+            <button @click="uploadPhoto()" class="btn btn-primary" :disabled="uploading">
+              <span x-show="!uploading">업로드</span>
+              <span x-show="uploading">업로드 중...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/instructorpage.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>
